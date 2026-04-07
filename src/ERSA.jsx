@@ -963,12 +963,16 @@ export default function ERSA() {
       const parsed = parseReport(reply);
       if (parsed) {
         setReport(parsed);
+        setCurrentQ(null);
         const preText = reply.slice(0, reply.indexOf("ERSA_REPORT_JSON:")).trim();
-        setMessages([...newMessages, { role: "assistant", content: preText || (fr ? "Votre rapport est prêt." : "Your report is ready.") }]);
+        setMessages([...newMessages, { role: "assistant", content: preText || (fr ? "Votre rapport est prêt." : "Your report is ready."), questionKey: null }]);
         setTimeout(() => setScreen("report"), 800);
       } else {
-        setMessages([...newMessages, { role: "assistant", content: reply }]);
-        setPhasesDetected(detectPhases([...newMessages, { role: "assistant", content: reply }]));
+        const qKey = detectQuestion(reply);
+        const cleanedReply = cleanMessage(reply);
+        setCurrentQ(qKey);
+        setMessages([...newMessages, { role: "assistant", content: cleanedReply, questionKey: qKey }]);
+        setPhasesDetected(detectPhases([...newMessages, { role: "assistant", content: cleanedReply }]));
       }
     } catch { setError(fr ? "Erreur de connexion. Veuillez réessayer." : "Connection error. Please try again."); }
     setLoading(false);
