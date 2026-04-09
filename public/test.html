@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="color-scheme" content="dark">
-<style>html,body{background:#0D2B45 !important;margin:0;padding:0}</style>
+<style>html,body{background:#0D2B45 !important;margin:0;padding:0;overflow-x:hidden;max-width:100vw}</style>
 <title>ERSA v5 — Test Build</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;margin:0;padding:0;font-family:Georgia,serif;color:#fff;background:#0D2B45 !important}
+html,body{height:100%;margin:0;padding:0;font-family:Georgia,serif;color:#fff;background:#0D2B45 !important;overflow-x:hidden}
 *{box-sizing:border-box}
 .screen{display:none;min-height:100vh;min-height:100dvh;background:#0D2B45 !important;color:#fff}
 .screen.active{display:flex;flex-direction:column}
@@ -214,7 +214,7 @@ LANGUAGE: Conduct the entire assessment in the producer's chosen language (Engli
 
 INTAKE DATA: You will receive the producer's name, business name, product range, target markets, and email. Do not ask for these again. Use them to personalise your questions.
 
-ELIGIBILITY GATES: If the answer to Gate Q1 or Gate Q2 is No or Expired, immediately inform the producer they are Not Eligible. Your response MUST contain the exact phrase "Not Eligible" — this is used by the system to stop the assessment. Explain warmly why registration/licensing is a prerequisite, and tell them Passage will make contact to support their path to eligibility. Do not ask any further questions. Do not append any [ERSA_Q] tag. End the conversation there.
+ELIGIBILITY GATES: If the answer to Gate Q1 or Gate Q2 is No or Expired, immediately inform the producer they are Not Eligible. Your response MUST contain the exact phrase "Not Eligible" — this is used by the system to stop the assessment. Explain warmly why registration/licensing is a prerequisite, and tell them to please contact Passage directly on hello@passageexport.com. Do not ask any further questions. Do not append any [ERSA_Q] tag. End the conversation there.
 
 COMPULSORY vs DESIRABLE: When identifying gaps, classify each as follows.
 COMPULSORY (must be resolved before Passage can coordinate a shipment, or causes importer rejection): GATE1, GATE2, Q01, Q02, Q08, Q09, Q12, Q13, Q15, Q16, Q17, Q18, Q19, Q20, Q21, Q22, Q28 (frozen/chilled only), Q29 (frozen/chilled only), Q38, Q41, Q42.
@@ -361,7 +361,7 @@ ERSA_REPORT_JSON:
 const OPTS={
   GATE1:["Yes — registered and compliant","In progress — registration underway","No — not yet registered"],
   GATE2:["Yes — current and valid","Expired — renewal in progress","No — no licence held"],
-  Q01:["Yes — EHC held for at least one product","Not yet — but facility is inspection-ready","Not yet — facility preparation required"],
+  Q01:["Yes — Export Health Certificate (EHC) held for at least one product","Not yet — but facility is inspection-ready","Not yet — facility preparation required"],
   Q02:["Yes — facility meets inspection standards","Possibly — some improvements are required before inspection","No — significant preparation is needed before an inspection could be requested"],
   Q03:["HACCP — Hazard Analysis and Critical Control Points","ISO 22000 — Food Safety Management System","Both HACCP and ISO 22000","Internal food safety procedures — not formally certified","No structured food safety system in place"],
   Q04:["Yes — all CCPs documented, monitored, and recorded","Partially — some documentation in place","No — hazard controls are informal or undocumented"],
@@ -410,7 +410,7 @@ const OPTS_FR={
   GATE1:["Oui — enregistrée et conforme","En cours — enregistrement en cours","Non — pas encore enregistrée"],
   GATE2:["Oui — valide et à jour","Expirée — renouvellement en cours","Non — aucune licence détenue"],
 
-  Q01:["Oui — Certificat sanitaire obtenu pour au moins un produit","Pas encore — mais l'installation est prête pour une inspection","Pas encore — préparation de l'installation requise"],
+  Q01:["Oui — Certificat sanitaire à l'exportation (CSE) obtenu pour au moins un produit","Pas encore — mais l'installation est prête pour une inspection","Pas encore — préparation de l'installation requise"],
 
   Q02:["Oui — l'installation répond aux normes d'inspection","Peut-être — des améliorations sont nécessaires avant l'inspection","Non — une préparation importante est nécessaire avant de demander une inspection"],
 
@@ -573,7 +573,7 @@ function cleanMsg(t){ return t.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").tr
 function parseReport(t){ const i=t.indexOf("ERSA_REPORT_JSON:"); if(i<0)return null; try{ const s=t.slice(i+17).trim(); return JSON.parse(s.slice(0,s.lastIndexOf("}")+1)); }catch{return null;} }
 function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function showScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.style.display="none"); $(id).style.display="flex"; }
-function scrollToBottom(){ setTimeout(()=>{ const m=$("messages"); m.scrollTop=m.scrollHeight; },80); }
+function scrollToBottom(delay){ setTimeout(()=>{ const m=$("messages"); if(m){m.scrollTop=m.scrollHeight;} },delay||80); }
 
 // ── Language & intake ─────────────────────────────────────────────────────────
 function setLang(l){
@@ -746,6 +746,8 @@ function appendAIMessage(text,qKey,isGateFail){
   }
   updateProgress(qKey);
   scrollToBottom();
+  // Extra delayed scroll to ensure buttons are fully rendered before scrolling
+  scrollToBottom(300);
 }
 
 function appendTyping(){
@@ -957,7 +959,12 @@ function renderReport(report){
   $("banner").style.display="none";
   // Store report globally for Q&A print
   window._ersaReport=report;
-  const b=BAND[report.band]||BAND["Developing"];
+  // Calculate band from score — do not trust AI band field
+  const totalScoreNum=parseInt(report.totalScore)||0;
+  const derivedBand=totalScoreNum>=109?"Export-ready":totalScoreNum>=68?"Near-ready":totalScoreNum>=34?"Developing":"Pre-readiness";
+  const b=BAND[derivedBand]||BAND["Developing"];
+  // Override report.band so email body also reflects correct band
+  report.band=derivedBand;
   const p=PW[report.recommendedPathway]||PW["Verification"];
   const isFr=fr();
   const phaseKeys=[
@@ -1000,7 +1007,14 @@ function renderReport(report){
     const d=report.phases?.[ph.k]||{score:0,max:ph.max,summary:"",gaps:[]};
     const pct=d.max>0?Math.round((d.score/d.max)*100):0;
     const sc=pct>=80?"#1A5C38":pct>=50?"#2E86C1":pct>=25?"#B7620A":"#B91C1C";
-    const gaps=d.gaps||[];
+    const gaps=(d.gaps||[]).map(g=>({
+      id:g.id||g.ref||g.reference||"",
+      title:g.title||g.name||g.gap||g.item||"",
+      type:(g.type||g.classification||"desirable").toLowerCase(),
+      difficulty:(g.difficulty||g.effort||"medium").toLowerCase().replace(/\s/g,""),
+      action:g.action||g.description||g.text||g.detail||"",
+      passage:g.passage||g.help||g.passageHelp||g.passage_help||""
+    }));
     let gapsHTML="";
     gaps.forEach(g=>{
       const isComp=g.type==="compulsory";
@@ -1076,7 +1090,7 @@ I have attached my ERSA Report and Full Assessment Record to this email.
 
 Thank you.`;
   $("rw").innerHTML=`
-    <div style="max-width:780px;width:100%;background:white;border-radius:0;overflow:hidden;box-shadow:0 4px 40px rgba(0,0,0,0.12)">
+    <div style="max-width:780px;width:100%;background:white;border-radius:0;overflow:hidden;box-shadow:0 4px 40px rgba(0,0,0,0.12);word-wrap:break-word;overflow-wrap:break-word">
       <div style="background:linear-gradient(135deg,#0D2B45,#1A3C5E);padding:36px 40px 32px">
         <div style="font-size:10px;letter-spacing:0.22em;color:#90CAF9;font-family:monospace;text-transform:uppercase;margin-bottom:10px">${isFr?"PASSAGE EXPORT GROUP — RAPPORT ERSA":"PASSAGE EXPORT GROUP — ERSA REPORT"}</div>
         <div style="font-size:26px;font-weight:900;color:white;margin-bottom:4px">${esc(report.businessName||"")}</div>
@@ -1139,7 +1153,7 @@ Thank you.`;
             <div style="font-size:15px;font-weight:700;color:#0D2B45;margin-bottom:6px">${isFr?"Demandez un rappel à Passage":"Request a callback from Passage"}</div>
             <div style="font-size:13px;color:#475569;line-height:1.65;margin-bottom:12px">${isFr?"Copiez le message ci-dessous, ouvrez votre client de messagerie, collez-le dans un nouvel e-mail — <strong style='color:#0D2B45'>joignez les deux PDF</strong> — et envoyez.":"Copy the message below, open your email client, paste it into a new email — <strong style='color:#0D2B45'>attach both PDFs you just saved</strong> — and send."}</div>
             <div style="background:#F8F6F2;border:1px solid #E2E8F0;border-radius:8px;padding:16px">
-              <div style="font-size:10px;font-family:monospace;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;display:flex;align-items:center;gap:8px">${isFr?"Copiez ce message —":"Copy this message —"} <span style="background:#0D2B45;color:white;padding:2px 8px;border-radius:3px;letter-spacing:0.08em">${isFr?"JOIGNEZ LES DEUX PDF AVANT D'ENVOYER":"ATTACH BOTH PDFs BEFORE SENDING"}</span></div>
+              <div style="font-size:10px;font-family:monospace;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap">${isFr?"Copiez ce message —":"Copy this message —"} <span style="background:#0D2B45;color:white;padding:2px 8px;border-radius:3px;letter-spacing:0.08em">${isFr?"JOIGNEZ LES DEUX PDF AVANT D'ENVOYER":"ATTACH BOTH PDFs BEFORE SENDING"}</span></div>
               <div style="font-size:12px;font-family:monospace;color:#475569;margin-bottom:8px;padding:6px 10px;background:white;border:1px solid #E2E8F0;border-radius:4px;white-space:pre">${emailSubj}</div>
               <div id="ersa-email-body" style="font-size:12px;color:#334155;line-height:1.65;white-space:pre-wrap;padding:10px 12px;background:white;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:10px;font-family:Georgia,serif">${emailBody}</div>
               <button onclick="copyEmailBody()" style="background:#0D2B45;color:white;border:none;border-radius:6px;padding:9px 18px;font-size:12px;font-weight:700;font-family:Georgia,serif;cursor:pointer;width:100%">${isFr?"Copier le message":"Copy message to clipboard"}</button>
