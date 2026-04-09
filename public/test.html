@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<style>html,body{background:#0D2B45 !important;margin:0;padding:0}</style>
+<title>ERSA v5 — Test Build</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;margin:0;padding:0;font-family:Georgia,serif;color:#fff;background:#0D2B45 !important}
+*{box-sizing:border-box}
+.screen{display:none;min-height:100vh;min-height:100dvh;background:#0D2B45 !important;color:#fff}
+.screen.active{display:flex;flex-direction:column}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0D2B45}::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.25);border-radius:3px}
+.screen{display:none;min-height:100vh;min-height:100dvh;background:#0D2B45 !important;color:#fff;align-items:center;justify-content:center;padding:24px}
+.eyebrow{font-size:10px;letter-spacing:.25em;color:#90CAF9;font-family:monospace;margin-bottom:20px;text-transform:uppercase}
+h1{font-size:28px;font-weight:900;margin-bottom:16px;line-height:1.2}
+.btn-primary{background:#fff;color:#0D2B45;border:none;border-radius:8px;padding:14px 32px;font-size:15px;font-weight:800;cursor:pointer;font-family:Georgia,serif}
+.btn-ghost{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:14px 32px;font-size:15px;font-weight:800;cursor:pointer;font-family:Georgia,serif}
+.intake-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:36px 40px;max-width:520px;width:100%}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.6);margin-bottom:6px;letter-spacing:.05em;text-transform:uppercase;font-family:monospace}
+.field input{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:8px;padding:11px 14px;color:#fff;font-size:14px;font-family:Georgia,serif;outline:none}
+.field input::placeholder{color:rgba(255,255,255,.25)}
+.field input:focus{border-color:rgba(255,255,255,.35)}
+.mkt-btn{background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:Georgia,serif;transition:all .2s}
+.mkt-btn.on{background:#fff;color:#0D2B45;border-color:#fff}
+.start-btn{width:100%;border:none;border-radius:8px;padding:15px;font-size:15px;font-weight:800;font-family:Georgia,serif;transition:all .2s;margin-top:8px}
+.start-btn.ready{background:#fff;color:#0D2B45;cursor:pointer}
+.start-btn.notready{background:rgba(255,255,255,.1);color:rgba(255,255,255,.3);cursor:default}
+#chat-screen{flex-direction:column;padding:0;align-items:stretch;height:100vh}
+.chat-header{background:rgba(0,0,0,.3);border-bottom:1px solid rgba(255,255,255,.08);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.chat-title{font-size:14px;font-weight:800}
+.phase-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);transition:background .4s}
+.restart-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;font-family:monospace}
+#messages{flex:1;overflow-y:auto;padding:24px 24px 16px}
+.msg-inner{max-width:680px;margin:0 auto}
+.msg-row{margin-bottom:16px;display:flex}
+.msg-row.user{justify-content:flex-end}
+.ai-avatar{width:28px;height:28px;border-radius:50%;background:#1A3C5E;border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:12px;color:#90CAF9;margin-right:10px;flex-shrink:0;margin-top:2px}
+.bubble{max-width:78%;padding:12px 16px;font-size:14px;line-height:1.7;white-space:pre-wrap}
+.bubble.user{background:rgba(255,255,255,.9);color:#0D2B45;border-radius:16px 16px 4px 16px;font-weight:600}
+.bubble.ai{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.88);border-radius:4px 16px 16px 16px}
+.typing{display:flex;gap:6px;padding:4px 0}
+.dot{width:6px;height:6px;border-radius:50%;background:#90CAF9;animation:pulse 1.2s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+.answers-block{padding-left:38px;margin-bottom:16px}
+.ref-card{background:rgba(26,92,56,.15);border:1px solid rgba(26,92,56,.35);border-radius:10px;padding:12px 16px;margin-bottom:10px}
+.ref-label{font-size:11px;font-weight:700;color:#6EE7B7;letter-spacing:.06em;text-transform:uppercase;font-family:monospace;margin-bottom:6px}
+.ref-title{font-size:13px;font-weight:600;color:rgba(255,255,255,.9);margin-bottom:4px}
+.ref-desc{font-size:12px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:8px}
+.ref-link{font-size:12px;font-weight:700;color:#6EE7B7;text-decoration:none}
+.ans-btn{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:11px 16px;color:rgba(255,255,255,.88);font-size:14px;text-align:left;cursor:pointer;font-family:Georgia,serif;line-height:1.5;transition:all .15s;margin-bottom:8px;display:block}
+.ans-btn:hover:not(.dimmed):not(.selected){background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.4)}
+.ans-btn.selected{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.5)}
+.ans-btn.dimmed{background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.08);color:rgba(255,255,255,.25);cursor:default}
+.ans-btn.submitted{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.5);cursor:default}
+.ctx-box{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:12px 14px;margin-top:4px}
+.ctx-label{font-size:11px;color:rgba(255,255,255,.5);margin-bottom:8px;font-family:monospace;letter-spacing:.06em;text-transform:uppercase}
+.ctx-ta{width:100%;background:transparent;border:none;outline:none;color:rgba(255,255,255,.88);font-size:13px;font-family:Georgia,serif;line-height:1.6;resize:none}
+.ctx-ta::placeholder{color:rgba(255,255,255,.25)}
+.ctx-actions{display:flex;gap:8px;margin-top:12px}
+.skip-btn{flex:1;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,.65);font-size:14px;cursor:pointer;font-family:Georgia,serif;padding:12px 16px;border-radius:8px;font-weight:600}
+.send-btn{flex:1;border:none;border-radius:8px;padding:12px 16px;font-size:14px;font-weight:700;font-family:Georgia,serif;transition:all .2s}
+.send-btn.ready{background:rgba(255,255,255,.9);color:#0D2B45;cursor:pointer}
+.send-btn.notready{background:rgba(255,255,255,.15);color:rgba(255,255,255,.3);cursor:default}
+.input-bar{padding:16px 24px 24px;border-top:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.2);flex-shrink:0}
+.input-inner{max-width:680px;margin:0 auto;display:flex;gap:10px}
+.text-input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:12px 16px;color:#fff;font-size:14px;font-family:Georgia,serif;outline:none}
+.text-input::placeholder{color:rgba(255,255,255,.25)}
+.text-input:focus{border-color:rgba(255,255,255,.35)}
+.send-arrow{background:#fff;color:#0D2B45;border:none;border-radius:10px;padding:12px 20px;font-size:16px;font-weight:800;cursor:pointer}
+.send-arrow:disabled{background:rgba(255,255,255,.1);color:rgba(255,255,255,.3);cursor:default}
+.phases-label{font-size:10px;color:rgba(255,255,255,.25);font-family:monospace;margin-top:8px;max-width:680px;margin-left:auto;margin-right:auto}
+.error-msg{background:#FEE2E2;border:1px solid rgba(185,28,28,.4);border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#B91C1C}
+#report-screen{flex-direction:column;padding:32px 24px;align-items:center}
+.report-wrap{max-width:680px;width:100%}
+.report-card{border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.12);margin-bottom:24px}
+.rh{background:linear-gradient(135deg,#0D2B45,#1A3C5E);padding:28px 32px}
+.rh-eyebrow{font-size:10px;letter-spacing:.2em;color:#90CAF9;font-family:monospace;margin-bottom:8px;text-transform:uppercase}
+.rh-biz{font-size:22px;font-weight:900;margin-bottom:4px}
+.rh-sub{font-size:14px;color:rgba(255,255,255,.65)}
+.band-bar{padding:20px 32px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.band-score{font-size:48px;font-weight:900;line-height:1}
+.rb{padding:24px 32px;background:#fff}
+.rationale{font-size:14px;color:#475569;line-height:1.7;margin-bottom:24px;border-left:3px solid #ccc;padding-left:14px}
+.sec-title{font-size:11px;font-family:monospace;font-weight:700;color:#94a3b8;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px}
+.ph-row{background:#F8FAFC;border-radius:8px;padding:12px 16px;border:1px solid #e2e8f0;margin-bottom:8px}
+.ph-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;font-weight:700}
+.bar-wrap{height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-bottom:8px}
+.bar-fill{height:100%;border-radius:4px}
+.ph-sum{font-size:13px;color:#64748b;line-height:1.6}
+.ph-gap{margin-top:6px;font-size:12px;color:#B91C1C;background:#FEE2E2;border-radius:4px;padding:4px 10px;display:inline-block}
+.pri-row{display:flex;gap:12px;align-items:flex-start;margin-bottom:8px}
+.pri-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#0D2B45;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.pw-box{background:#F8FAFC;border-radius:10px;padding:20px 24px;border:2px solid #ccc}
+.pw-name{font-size:18px;font-weight:900;margin-bottom:6px}
+.pw-rat{font-size:13px;color:#475569;line-height:1.7;margin-bottom:12px}
+.pw-cta{font-size:13px;font-weight:700;color:#0D2B45}
+.pw-email{font-size:12px;color:#64748b;font-family:monospace;margin-top:4px}
+.new-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);border-radius:8px;padding:10px 24px;font-size:13px;cursor:pointer;font-family:Georgia,serif;width:100%;text-align:center;display:block}
+.test-banner{background:#B7620A;color:#fff;text-align:center;padding:6px 12px;font-size:11px;font-family:monospace;letter-spacing:.05em}
+@media print {
+  body { background: white !important; }
+  .test-banner, #lang-screen, #intake-screen, #chat-screen, .new-btn { display: none !important; }
+  #report-screen { display: block !important; padding: 0 !important; background: white !important; }
+  .report-wrap { max-width: 100% !important; }
+  .report-card { border: 1px solid #ccc !important; box-shadow: none !important; }
+  .rh { background: #0D2B45 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .band-bar, .rb { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .bar-fill, .score-bar-fill { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .ph-gap { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+<div class="test-banner" id="banner">⚠ ERSA v5 TEST BUILD — Not for production use</div>
+
+<!-- LANGUAGE -->
+<div class="screen active" id="lang-screen">
+  <div style="text-align:center;max-width:480px;width:100%">
+    <div class="eyebrow">Passage Export Group</div>
+    <div style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 24px">◈</div>
+    <h1>Export Readiness<br>Self-Assessment</h1>
+    <p style="font-size:13px;color:rgba(255,255,255,.4);font-style:italic;margin-bottom:36px">Choose your language / Choisissez votre langue</p>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button class="btn-primary" onclick="setLang('EN')">English</button>
+      <button class="btn-ghost" onclick="setLang('FR')">Français</button>
+    </div>
+  </div>
+</div>
+
+<!-- INTAKE -->
+<div class="screen" id="intake-screen">
+  <div class="intake-card">
+    <div class="eyebrow" id="ie">Your details</div>
+    <h1 style="font-size:20px;margin-bottom:24px" id="ih">Before we begin</h1>
+    <div class="field"><label id="ln">Your name</label><input id="fn" placeholder="First and last name"></div>
+    <div class="field"><label id="lb">Business name</label><input id="fb" placeholder="Your business name"></div>
+    <div class="field"><label id="lp">Product range</label><input id="fp" placeholder="e.g. Frozen dal puris, faratas"></div>
+    <div class="field"><label id="le">Email address</label><input type="email" id="fe" placeholder="Your email address"></div>
+    <div class="field">
+      <label id="lm">Target markets</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="mkt-btn" onclick="toggleMkt(this,'Australia')">Australia</button>
+        <button class="mkt-btn" onclick="toggleMkt(this,'UK')">UK</button>
+        <button class="mkt-btn" onclick="toggleMkt(this,'France')">France</button>
+        <button class="mkt-btn" onclick="toggleMkt(this,'Canada')">Canada</button>
+        <button class="mkt-btn" onclick="toggleMkt(this,'Other')">Other</button>
+      </div>
+    </div>
+    <button class="start-btn notready" id="sb" onclick="startChat()">Begin the assessment →</button>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div class="screen" id="chat-screen" style="height:calc(100vh - 32px)">
+  <div class="chat-header">
+    <div>
+      <div class="eyebrow" style="margin-bottom:2px">Passage Export Group</div>
+      <div class="chat-title" id="ct">ERSA — Assessment in progress</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px">
+      <div style="display:flex;gap:6px" id="dots">
+        <div class="phase-dot" id="d0"></div><div class="phase-dot" id="d1"></div>
+        <div class="phase-dot" id="d2"></div><div class="phase-dot" id="d3"></div>
+      </div>
+      <button class="restart-btn" onclick="restart()">Restart</button>
+    </div>
+  </div>
+  <!-- Progress bar -->
+  <div style="background:rgba(0,0,0,0.2);padding:8px 24px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0">
+    <div style="max-width:680px;margin:0 auto;display:flex;align-items:center;gap:12px">
+      <div style="flex:1;height:4px;background:rgba(255,255,255,0.1);border-radius:2px;overflow:hidden">
+        <div id="progress-fill" style="height:100%;background:#90CAF9;border-radius:2px;width:0%;transition:width 0.4s ease"></div>
+      </div>
+      <div id="progress-label" style="font-size:11px;color:rgba(255,255,255,0.4);font-family:monospace;white-space:nowrap;min-width:80px;text-align:right">0 of 45</div>
+    </div>
+  </div>
+  <div id="messages" style="flex:1;overflow-y:auto;padding:24px 24px 16px">
+    <div class="msg-inner" id="mi"></div>
+  </div>
+  <div class="input-bar">
+    <div class="input-inner">
+      <input class="text-input" id="ti" placeholder="Or type your response…" onkeydown="onKey(event)" oninput="updateArrow()">
+      <button class="send-arrow" id="sa" onclick="sendTyped()" disabled>→</button>
+    </div>
+    <div class="phases-label" id="pl">0/4 phases covered</div>
+  </div>
+</div>
+
+<!-- REPORT -->
+<div class="screen" id="report-screen">
+  <div class="report-wrap" id="rw"></div>
+</div>
+
+<script>
+const API_KEY="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";
+
+// ── State ────────────────────────────────────────────────────────────────────
+let lang="EN", markets=[], messages=[], loading=false, phasesLit=new Set();
+let pendingNoAdvance=false;
+let storageClassification=null; // "ambient", "chilled", or "frozen" — set when Q08 is answered
+const COLD_CHAIN_KEYS=new Set(["Q28","Q29","Q30"]); // skipped for ambient products
+
+// ── System prompt ─────────────────────────────────────────────────────────────
+const SYS=`You are the ERSA assessment agent for Passage Export Group — the infrastructure builder for Mauritian food exports and the founding architect of Island Creole Cuisine as a global food category.
+
+You conduct structured export readiness assessments for Mauritian food producers across four phases. You are warm, professional, direct, and knowledgeable. You never use filler phrases. You ask one question at a time and listen carefully.
+
+LANGUAGE: Conduct the entire assessment in the producer's chosen language (English or French). Always address the producer directly using "you" and "your" — never refer to them in the third person as "the producer". The producer is speaking to you directly.
+
+INTAKE DATA: You will receive the producer's name, business name, product range, target markets, and email. Do not ask for these again. Use them to personalise your questions.
+
+ELIGIBILITY GATES: If the answer to Gate Q1 or Gate Q2 is No or Expired, immediately inform the producer they are Not Eligible. Your response MUST contain the exact phrase "Not Eligible" — this is used by the system to stop the assessment. Explain warmly why registration/licensing is a prerequisite, and tell them Passage will make contact to support their path to eligibility. Do not ask any further questions. Do not append any [ERSA_Q] tag. End the conversation there.
+
+ASSESSMENT STRUCTURE — 4 phases, 45 questions:
+
+PHASE 1 — REGULATORY READINESS
+Gate Q1: Is your facility formally registered with the relevant Mauritian local authority?
+Gate Q2: Does your facility hold a current, valid food business licence?
+Q01: Has your facility ever received an Export Health Certificate from the Ministry of Health & Wellness?
+Q02: Based on your facility's current condition, would it meet EHC inspection standards today?
+Q03: Does your facility operate under a recognised food safety system? (HACCP / ISO 22000 / Both / Internal only / None)
+Q04: Are your Critical Control Points documented, monitored, and recorded?
+Q05: Can you trace all ingredients back to their supplier, batch number, and delivery date?
+Q06: Can you trace finished goods batches from production through to despatch?
+
+PHASE 2 — PRODUCT & MARKET READINESS
+Q07: Does your product contain meat, seafood, dairy, eggs, honey, or other animal-derived ingredients?
+Q08: What is your product's storage classification? (Ambient / Chilled / Frozen)
+Q09: What is your product's declared shelf life?
+Q10: Has your product's shelf life been validated through formal laboratory or documented challenge testing?
+Q11: Is your product formulation — recipes, ingredient specs, processing parameters — documented?
+Q12: Is your primary packaging food-grade certified and temperature-appropriate?
+Q13: Is your secondary/outer packaging suitable for palletised international sea freight — AND do you have a documented carton standard your supplier must match on every reorder?
+Q14: Has your product been transported under commercial export freight conditions previously?
+Q15: Are all ingredients on your label listed in descending order of weight with sub-ingredients declared?
+Q16: Are all major allergens clearly declared on your label?
+Q17: Does your label include a Nutrition Information Panel in the format required by your target markets?
+Q18: Is the net weight declared in metric units on your label?
+Q19: Does your label include a country of origin statement?
+Q20: Does your label include the name and address of an importer in the destination market?
+Q21: Does your label carry a registered EAN-13 / GS1-compliant barcode?
+Q22: Is your label in the required language(s) for your target markets?
+Q23: Do you hold editable, print-ready artwork files for your current packaging?
+
+PHASE 3 — OPERATIONS READINESS
+Q24: How many units could you allocate to export orders per month, after fulfilling your existing domestic commitments?
+Q25: Is your export-available production volume consistent month-on-month?
+Q26: If your export demand doubled within 12 months, could your production scale to meet it?
+Q27: Do you currently supply retailers, distributors, or foodservice operators? (Select all that apply)
+Q28 (chilled/frozen only): Does your facility have dedicated cold storage at the required temperature?
+Q29 (chilled/frozen only): Can you maintain an unbroken cold chain from your facility to the port of loading?
+Q30 (chilled/frozen only): Have you previously exported chilled or frozen products in a reefer container?
+Q31: Is your production process documented — equipment settings, parameters, batch sizes, quality checks?
+Q32: Are your key ingredients sourced consistently from the same suppliers under the same specifications?
+Q33: Do you conduct systematic quality checks before goods are marked ready for despatch?
+Q34: Could you maintain uninterrupted export supply for six months if a major importer doubled their order?
+
+PHASE 4 — COMMERCIAL READINESS
+Q35: Have you developed an export price list — separate from your domestic pricing?
+Q36: Do you price your export goods on an ex-works or FOB basis?
+IMPORTANT FOR Q36: If the answer is Unsure, explain in plain language: Ex-works means your responsibility ends at your factory gate — the buyer arranges all transport from there. FOB means you deliver to the port of loading and responsibility transfers when goods are loaded onto the vessel. Passage's preferred model is FOB. Ask them to confirm which they use or are likely to use. Keep it to 2-3 sentences then show Q36 again.
+Q37: Have you defined minimum order quantities for your export products?
+Q38: Can your business issue formal commercial invoices in Mauritian Rupees (MUR) with correct registration details?
+Q39: What payment terms can your business offer Passage as your export buyer?
+Q40: Does your business have sufficient working capital to fund export production in advance — including a potential 60-90 day gap before payment receipt?
+Q41: Is your business formally registered with a company number, VAT (if applicable), and a dedicated business bank account?
+Q42: Does your business have product liability insurance in place?
+Q43: Does your business have a documented food recall procedure?
+
+SCORING: 0=Not in place, 1=Partial/in progress, 2=Adequate, 3=Strong
+BANDS (out of 135): 0-33 Pre-Readiness, 34-67 Developing, 68-108 Near-Ready, 109-135 Export-Ready
+
+EFFICIENCY: One question at a time. Target 7-10 minutes total.
+PHASE TRANSITIONS: Announce briefly and naturally.
+
+CONTEXT RESPONSES:
+When a producer adds context after selecting an answer:
+— Incorporate it into scoring silently
+— Acknowledge in ONE brief sentence only
+— Immediately ask the NEXT question after the acknowledgement
+— CRITICAL: The tag at the end of your message MUST match the NEW question you are asking — NOT the question that was just answered. Example: if you acknowledged Q07 and are now asking Q08, the tag MUST be [ERSA_Q:Q08] not [ERSA_Q:Q07].
+— Before ending your message, verify: does the tag match the question I just asked? If not, correct it.
+— Never omit the tag even in acknowledgement responses.
+
+COMPOUND RISK FLAGGING:
+When you detect compound risks (e.g. frozen + partial cold chain + no reefer experience), flag in one sentence: "I want to note that across the last few answers, [risk]. I will compile the full detail in your report." Then move immediately to the next question.
+
+CRITICAL — QUESTION TAGS: After every question you ask, append the EXACT tag for that question as the very last thing in your message. The tag must match the question you just asked — a wrong tag shows the wrong answer buttons to the producer. Use this reference table:
+
+Gate Q1 → [ERSA_Q:GATE1]
+Gate Q2 → [ERSA_Q:GATE2]
+Q01 (EHC received?) → [ERSA_Q:Q01]
+Q02 (EHC inspection ready today?) → [ERSA_Q:Q02]
+Q03 (Food safety system?) → [ERSA_Q:Q03]
+Q04 (CCPs documented?) → [ERSA_Q:Q04]
+Q05 (Ingredient traceability?) → [ERSA_Q:Q05]
+Q06 (Batch traceability?) → [ERSA_Q:Q06]
+Q07 (Animal-derived ingredients?) → [ERSA_Q:Q07]
+Q08 (Storage classification: ambient/chilled/frozen?) → [ERSA_Q:Q08]
+Q09 (Declared shelf life?) → [ERSA_Q:Q09]
+Q10 (Shelf life validated?) → [ERSA_Q:Q10]
+Q11 (Formulation documented?) → [ERSA_Q:Q11]
+Q12 (Primary packaging food-grade?) → [ERSA_Q:Q12]
+Q13 (Outer carton/carton standard?) → [ERSA_Q:Q13]
+Q14 (Export freight experience?) → [ERSA_Q:Q14]
+Q15 (Ingredient list order?) → [ERSA_Q:Q15]
+Q16 (Allergen declaration?) → [ERSA_Q:Q16]
+Q17 (Nutrition panel?) → [ERSA_Q:Q17]
+Q18 (Net weight metric?) → [ERSA_Q:Q18]
+Q19 (Country of origin?) → [ERSA_Q:Q19]
+Q20 (Importer address on label?) → [ERSA_Q:Q20]
+Q21 (EAN-13 barcode?) → [ERSA_Q:Q21]
+Q22 (Label language?) → [ERSA_Q:Q22]
+Q23 (Editable artwork files?) → [ERSA_Q:Q23]
+Q24 (Export units per month?) → [ERSA_Q:Q24]
+Q25 (Volume consistency?) → [ERSA_Q:Q25]
+Q26 (Can production scale?) → [ERSA_Q:Q26]
+Q27 (Current customers?) → [ERSA_Q:Q27]
+Q28 (Cold storage on site?) → [ERSA_Q:Q28]
+Q29 (Cold chain to port?) → [ERSA_Q:Q29]
+Q30 (Reefer experience?) → [ERSA_Q:Q30]
+Q31 (Production process documented?) → [ERSA_Q:Q31]
+Q32 (Ingredient sourcing consistency?) → [ERSA_Q:Q32]
+Q33 (Quality checks before despatch?) → [ERSA_Q:Q33]
+Q34 (Supply continuity 6 months?) → [ERSA_Q:Q34]
+Q35 (Export price list?) → [ERSA_Q:Q35]
+Q36 (Ex-works or FOB?) → [ERSA_Q:Q36]
+Q37 (MOQs defined?) → [ERSA_Q:Q37]
+Q38 (MUR invoicing?) → [ERSA_Q:Q38]
+Q39 (Payment terms?) → [ERSA_Q:Q39]
+Q40 (Working capital?) → [ERSA_Q:Q40]
+Q41 (Business registered?) → [ERSA_Q:Q41]
+Q42 (Product liability insurance?) → [ERSA_Q:Q42]
+Q43 (Recall procedure?) → [ERSA_Q:Q43]
+
+NEVER use a tag that does not match the question you just asked. Always verify the tag matches the question before ending your message.
+
+FINAL SYNTHESIS: After all phases, output ONLY this JSON:
+
+ERSA_REPORT_JSON:
+{"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","phases":{"regulatory":{"score":0,"max":18,"summary":"","gap":null},"product":{"score":0,"max":51,"summary":"","gap":null},"operations":{"score":0,"max":33,"summary":"","gap":null},"commercial":{"score":0,"max":27,"summary":"","gap":null}},"totalScore":0,"band":"Pre-readiness","bandRationale":"","topPriorities":["","",""],"recommendedPathway":"Incubation","pathwayRationale":"","packagingGap":false}`;
+
+// ── Answer options ────────────────────────────────────────────────────────────
+const OPTS={
+  GATE1:["Yes — registered and compliant","In progress — registration underway","No — not yet registered"],
+  GATE2:["Yes — current and valid","Expired — renewal in progress","No — no licence held"],
+  Q01:["Yes — EHC held for at least one product","Not yet — but facility is inspection-ready","Not yet — facility preparation required"],
+  Q02:["Yes — facility meets inspection standards","Possibly — some improvements are required before inspection","No — significant preparation is needed before an inspection could be requested"],
+  Q03:["HACCP — Hazard Analysis and Critical Control Points","ISO 22000 — Food Safety Management System","Both HACCP and ISO 22000","Internal food safety procedures — not formally certified","No structured food safety system in place"],
+  Q04:["Yes — all CCPs documented, monitored, and recorded","Partially — some documentation in place","No — hazard controls are informal or undocumented"],
+  Q05:["Yes — full ingredient traceability records maintained","Partially — traceability records incomplete or inconsistent","No — no formal traceability system in place"],
+  Q06:["Yes — full batch traceability from production to despatch","Partially — some records maintained but not systematically","No — no finished goods traceability system"],
+  Q07:["No — plant-based or mineral ingredients only","Yes — dairy or egg ingredients","Yes — meat or seafood ingredients","Yes — honey or other animal-derived ingredients","Unsure"],
+  Q08:["Ambient / shelf-stable — no refrigeration required","Chilled — requires continuous refrigeration (0–5°C)","Frozen — requires continuous freezing (−18°C or below)"],
+  Q09:["Less than 3 months","3 – 6 months","6 – 12 months","More than 12 months","I have more than one product and shelf life varies across my range"],
+  Q10:["Yes — validated by accredited laboratory testing","Yes — validated through documented internal challenge testing","Partially — informal testing conducted but not formally documented","No — shelf life is estimated, not formally validated"],
+  Q11:["Yes — fully documented and version-controlled","Partially — documentation incomplete or informal","No — formulation is undocumented"],
+  Q12:["Yes — food-grade certified and temperature-appropriate","Food-grade certified but temperature suitability not confirmed","Not certified — packaging source and specification not verified"],
+  Q13:["Yes — outer cartons tested for export conditions and a documented carton standard is in place","Outer cartons are suitable but no formal carton standard documented — packaging sourced ad hoc","Packaging adequate for domestic use but not validated for export freight conditions","No formal outer carton specification — packaging sourced from available market supply"],
+  Q14:["Yes — exported successfully to international markets","Yes — exported within the region (e.g. Indian Ocean islands) but not to major export corridors","No — no prior export freight experience"],
+  Q15:["Yes — full ingredient declaration including all sub-ingredients","Partially — main ingredients listed but sub-ingredients not fully declared","No — ingredient list incomplete or absent"],
+  Q16:["Yes — all allergens clearly declared","Partially — some allergens declared but declaration is incomplete","No — allergen declaration absent or unclear"],
+  Q17:["Yes — NIP present and compliant with all target market formats","Partially — NIP present but format does not fully meet target market requirements","No — NIP absent"],
+  Q18:["Yes — metric units used (g, kg, ml, or l)","No — non-metric units used or net weight not declared"],
+  Q19:["Yes — Product of Mauritius or equivalent statement present","No — country of origin not declared"],
+  Q20:["Yes — importer name and address included on label","No — importer details not yet included"],
+  Q21:["Yes — registered EAN-13 barcode present on all SKUs","In progress — barcode registration underway","No — no barcode on current packaging"],
+  Q22:["English only — suitable for Australia and UK","English and French — suitable for Canada","French (mandatory information) — suitable for France / EU","Current label does not meet any target market language requirement"],
+  Q23:["Yes — fully editable artwork files in correct format (AI, EPS, or PDF)","Partially — some files available but not all SKUs covered","No — no editable artwork files available"],
+  Q24:["Fewer than 500 units available for export per month","500 – 2,000 units available for export per month","2,000 – 5,000 units available for export per month","5,000 – 20,000 units available for export per month","More than 20,000 units available for export per month"],
+  Q25:["Consistent — export-available volumes are stable and predictable","Seasonal variation — volumes fluctuate with ingredient availability or domestic demand cycles","Variable — export-available volumes are irregular and difficult to predict"],
+  Q26:["Yes — additional export capacity is readily available","Yes — but would require additional staff or minor equipment investment","Possibly — but would require significant capital investment","No — current production is at or near total capacity"],
+  Q27:["International buyers or exporters","National retailers or distributors in Mauritius","Local stores or markets only","Foodservice operators","No — direct to consumers only"],
+  Q28:["Yes — dedicated cold storage at required temperature, owned or leased","Partially — cold storage available but shared or insufficient capacity","No — no on-site cold storage"],
+  Q29:["Yes — temperature-controlled transport to port in place and documented","Partially — temperature-controlled transport available but not consistently documented","No — cold chain capability between facility and port not yet established"],
+  Q30:["Yes — reefer export experience with documented temperature records","Yes — reefer export experience but without formal temperature documentation","No — no prior reefer container export experience"],
+  Q31:["Yes — fully documented and followed consistently","Partially — documentation exists but is incomplete or not consistently followed","No — production relies on undocumented knowledge"],
+  Q32:["Yes — consistent sourcing from identified suppliers with agreed specifications","Partially — some ingredients sourced consistently, others vary by availability","No — ingredient sourcing varies significantly between batches"],
+  Q33:["Yes — systematic quality checks conducted and recorded for every batch","Partially — quality checks conducted but not systematically recorded","No — no formal pre-despatch quality checking process"],
+  Q34:["Yes — supply continuity could be maintained","Possibly — with advance notice and production planning","No — current supply chain constraints would prevent this"],
+  Q35:["Yes — export price list developed and costed","In progress — export pricing under development","No — no export pricing developed"],
+  Q36:["Ex-works — buyer collects from our facility","FOB — we deliver to port of loading, buyer arranges freight from there","We have not yet defined our export pricing basis","Unsure — I'd like to understand more"],
+  Q37:["Yes — MOQs defined and aligned with production economics","Partially — MOQs under consideration but not formally set","No — no MOQs defined"],
+  Q38:["Yes — invoicing capability in place with registered business details","Partially — invoicing possible but registration details incomplete","No — formal invoicing capability not yet established"],
+  Q39:["Payment on delivery — payment required before or on goods despatch","30-day terms — payment within 30 days of invoice","60-day terms — payment within 60 days of invoice","90-day terms — payment within 90 days of invoice"],
+  Q40:["Yes — working capital sufficient to fund export production in advance","Partially — limited working capital; order sizes would need to be managed carefully","No — working capital constraint would prevent taking export orders without advance payment"],
+  Q41:["Yes — fully registered with company number, VAT, and business bank account","Partially — registered but some elements incomplete","No — operating informally without formal registration"],
+  Q42:["Yes — product liability insurance in place","In progress — insurance being arranged","No — no product liability insurance"],
+  Q43:["Yes — documented recall procedure in place and staff are trained on it","Partially — procedure exists but is not formally documented or tested","No — no recall procedure in place"],
+};
+
+const TELL_US_MORE=new Set(["GATE1","GATE2","Q02","Q03","Q04","Q05","Q06","Q10","Q11","Q12","Q13","Q14","Q16","Q17","Q21","Q22","Q23","Q24","Q25","Q26","Q27","Q28","Q29","Q30","Q31","Q32","Q33","Q34","Q35","Q36","Q37","Q38","Q39","Q40","Q41","Q42","Q43"]);
+const AUTO_CTX=new Set(["I have more than one product and shelf life varies across my range","J'ai plusieurs produits et la durée de conservation varie selon chaque produit"]);
+// Q27 allows multiple selections before submitting
+const MULTI_SELECT=new Set(["Q27"]);
+// When these options are selected, the AI response is explanatory — do not advance question sequence
+const NO_ADVANCE_OPTIONS=new Set(["Unsure — I'd like to understand more","Je ne suis pas sûr(e) — j'aimerais en savoir plus"]);
+const REFS={
+  Q16:{title:"Allergen declaration requirements",desc:"The full list of declarable allergens differs by market. Check the guide before answering."},
+  Q17:{title:"Nutrition panel format by market",desc:"Each target market requires a different nutrition panel format."},
+  Q19:{title:"Country of origin wording",desc:"Each market has specific requirements for country of origin declaration."},
+  Q21:{title:"GS1 barcode registration",desc:"All four markets require a registered EAN-13 GS1 barcode."},
+  Q22:{title:"Label language requirements",desc:"AU/UK = English; Canada = bilingual EN/FR mandatory; France = French mandatory."},
+};
+const BAND={
+  "Pre-readiness":{c:"#B91C1C",bg:"#FEE2E2",l:"Pre-Readiness"},
+  "Developing":{c:"#B7620A",bg:"#FEF3E2",l:"Developing"},
+  "Near-ready":{c:"#2E86C1",bg:"#EBF5FB",l:"Near-Ready"},
+  "Export-ready":{c:"#1A5C38",bg:"#EAFAF1",l:"Export-Ready"},
+};
+const PW={
+  "Incubation":{c:"#B91C1C",d:"Passage Supplier Incubation Programme"},
+  "Product Development Services":{c:"#B7620A",d:"Passage Product Development Services"},
+  "Targeted Verification":{c:"#2E86C1",d:"Targeted Gap Remediation + Verification"},
+  "Verification":{c:"#1A5C38",d:"Passage Supplier Verification"},
+};
+const PHC=["#1A3C5E","#1A5C38","#B7620A","#6B21A8"];
+
+// ── Question sequence — the ground truth ─────────────────────────────────────
+// The order is fixed. We track position ourselves and use the AI tag only
+// as a cross-check. If the tag is missing or wrong, we still know where we are.
+const Q_SEQUENCE = [
+  "GATE1","GATE2",
+  "Q01","Q02","Q03","Q04","Q05","Q06",
+  "Q07","Q08","Q09","Q10","Q11","Q12","Q13","Q14","Q15",
+  "Q16","Q17","Q18","Q19","Q20","Q21","Q22","Q23",
+  "Q24","Q25","Q26","Q27","Q28","Q29","Q30","Q31","Q32","Q33","Q34",
+  "Q35","Q36","Q37","Q38","Q39","Q40","Q41","Q42","Q43"
+];
+let currentQIndex = -1; // -1 = not started
+
+function advanceQuestion(tagFromAI) {
+  // If AI provided a valid tag that moves forward, use it
+  if(tagFromAI && Q_SEQUENCE.includes(tagFromAI)){
+    const tagIdx = Q_SEQUENCE.indexOf(tagFromAI);
+    if(tagIdx > currentQIndex) {
+      // Block cold chain questions for ambient products regardless of AI tag
+      if(storageClassification==="ambient" && COLD_CHAIN_KEYS.has(tagFromAI)){
+        currentQIndex = Q_SEQUENCE.indexOf("Q31");
+        return "Q31";
+      }
+      currentQIndex = tagIdx;
+      return tagFromAI;
+    }
+  }
+  // AI tag missing or wrong — advance by one, skipping cold chain if ambient
+  let next = currentQIndex + 1;
+  while(next < Q_SEQUENCE.length && storageClassification==="ambient" && COLD_CHAIN_KEYS.has(Q_SEQUENCE[next])){
+    next++;
+  }
+  currentQIndex = Math.min(next, Q_SEQUENCE.length - 1);
+  return Q_SEQUENCE[currentQIndex];
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fr = () => lang==="FR";
+function detectQ(t){
+  // Return the LAST tag found — handles acknowledgement + question combined messages
+  const all=[...t.matchAll(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g)];
+  if(!all.length) return null;
+  return all[all.length-1][1];
+}
+function cleanMsg(t){ return t.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").trim(); }
+function parseReport(t){ const i=t.indexOf("ERSA_REPORT_JSON:"); if(i<0)return null; try{ const s=t.slice(i+17).trim(); return JSON.parse(s.slice(0,s.lastIndexOf("}")+1)); }catch{return null;} }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function showScreen(id){ document.querySelectorAll(".screen").forEach(s=>s.style.display="none"); $(id).style.display="flex"; }
+function scrollToBottom(){ setTimeout(()=>{ const m=$("messages"); m.scrollTop=m.scrollHeight; },80); }
+
+// ── Language & intake ─────────────────────────────────────────────────────────
+function setLang(l){
+  lang=l;
+  if(fr()){
+    $("ie").textContent="Vos coordonnées"; $("ih").textContent="Avant de commencer";
+    $("ln").textContent="Votre nom"; $("lb").textContent="Nom de l'entreprise";
+    $("lp").textContent="Gamme de produits"; $("le").textContent="Adresse e-mail";
+    $("lm").textContent="Marchés cibles"; $("sb").textContent="Commencer l'évaluation →";
+    $("ti").placeholder="Ou tapez votre réponse…";
+    $("ct").textContent="ERSA — Évaluation en cours";
+  }
+  showScreen("intake-screen");
+  ["fn","fb","fp","fe"].forEach(id=>$(id).addEventListener("input",checkReady));
+}
+let mkts=[];
+function toggleMkt(btn,m){ btn.classList.toggle("on"); mkts=mkts.includes(m)?mkts.filter(x=>x!==m):[...mkts,m]; checkReady(); }
+function checkReady(){
+  const ok=$("fn").value.trim()&&$("fb").value.trim()&&$("fp").value.trim()&&$("fe").value.trim()&&mkts.length>0;
+  $("sb").className="start-btn "+(ok?"ready":"notready");
+}
+
+// ── Chat start ────────────────────────────────────────────────────────────────
+async function startChat(){
+  const name=$("fn").value.trim(),biz=$("fb").value.trim(),prod=$("fp").value.trim(),email=$("fe").value.trim();
+  if(!name||!biz||!prod||!email||!mkts.length) return;
+  showScreen("chat-screen");
+  $("chat-screen").style.display="flex";
+  $("mi").innerHTML="";
+  messages=[];
+  const opening=fr()
+    ?`Bonjour. Je m'appelle ${name}. Mon entreprise s'appelle ${biz}. Produits : ${prod}. Marchés : ${mkts.join(", ")}. Prêt(e).`
+    :`Hello. My name is ${name}. My business is ${biz}. Products: ${prod}. Target markets: ${mkts.join(", ")}. Ready to begin.`;
+  messages.push({role:"user",content:opening});
+  setLoading(true);
+  await callAPI();
+}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function callAPI(){
+  try{
+    const res=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":API_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1024,system:SYS,messages:messages.map(m=>({role:m.role,content:m.content}))})
+    });
+    if(!res.ok) throw new Error(res.status);
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||"";
+    const report=parseReport(reply);
+    if(report){ setLoading(false); renderReport(report); return; }
+    // Gate-fail detection — suppress all buttons, show restart only
+    const replyLower=reply.toLowerCase();
+    const isGateFail=(replyLower.includes("not eligible")||replyLower.includes("non éligible")||replyLower.includes("pas éligible"))
+      && currentQIndex<=1;
+    const tagFromAI=detectQ(reply);
+    let qKey;
+    if(isGateFail){
+      qKey=null; // no buttons
+    } else if(pendingNoAdvance){
+      pendingNoAdvance=false;
+      qKey=Q_SEQUENCE[currentQIndex];
+    } else {
+      qKey=advanceQuestion(tagFromAI);
+    }
+    const clean=cleanMsg(reply);
+    messages.push({role:"assistant",content:clean,questionKey:qKey});
+    setLoading(false);
+    appendAIMessage(clean,qKey,isGateFail);
+    updatePhases(clean);
+  } catch(e){
+    setLoading(false);
+    appendError(fr()?"Erreur de connexion. Veuillez réessayer.":"Connection error. Please try again.");
+  }
+}
+
+// ── Key message rendering principle:
+// Each message is appended ONCE to the DOM and never rebuilt.
+// Answer buttons are appended once per question and locked after submission.
+// This prevents duplicate context boxes entirely.
+
+function appendUserBubble(text){
+  const mi=$("mi");
+  const row=document.createElement("div");
+  row.className="msg-row user";
+  row.innerHTML=`<div class="bubble user">${esc(text)}</div>`;
+  mi.appendChild(row);
+  scrollToBottom();
+}
+
+// ── Question number helpers ───────────────────────────────────────────────────
+function qKeyToNum(qKey){
+  if(!qKey) return null;
+  if(qKey==="GATE1") return 1;
+  if(qKey==="GATE2") return 2;
+  const m=qKey.match(/Q(\d{2})/);
+  if(m) return parseInt(m[1])+2;
+  return null;
+}
+function updateProgress(qKey){
+  const n=qKeyToNum(qKey);
+  if(!n) return;
+  const pct=Math.round((n/45)*100);
+  $("progress-fill").style.width=pct+"%";
+  $("progress-label").textContent=n+" of 45";
+}
+
+function appendAIMessage(text,qKey,isGateFail){
+  const mi=$("mi");
+  const row=document.createElement("div");
+  row.className="msg-row ai";
+
+  function formatMessageText(rawText){
+    let parts = rawText.split(/\n+/).map(p=>p.trim()).filter(p=>p.length>0);
+    if(parts.length===1 && parts[0].includes("?")){
+      const text=parts[0];
+      const lastQ=text.lastIndexOf("?");
+      let splitAt=-1;
+      for(let i=lastQ-1;i>10;i--){
+        if((text[i]==="."||text[i]==="!") && text[i+1]===" " && text[i+2]===text[i+2].toUpperCase()){
+          splitAt=i;
+          break;
+        }
+      }
+      if(splitAt>10){
+        const before=text.slice(0,splitAt+1).trim();
+        const after=text.slice(splitAt+1).trim();
+        if(before && after) parts=[before,after];
+      }
+    }
+    if(parts.length<=1) return `<p style="margin:0">${esc(rawText)}</p>`;
+    return parts.map(p=>`<p style="margin:0 0 10px 0">${esc(p)}</p>`).join('');
+  }
+
+  let displayText = formatMessageText(text);
+
+  if(qKey && qKey!=="GATE1" && qKey!=="GATE2"){
+    const num=qKeyToNum(qKey);
+    if(num){
+      displayText=`<span style="font-size:11px;font-weight:700;color:#90CAF9;font-family:monospace;display:block;margin-bottom:6px;letter-spacing:0.06em">Question ${num} of 45</span>${displayText}`;
+    }
+  }
+  row.innerHTML=`<div class="ai-avatar">◈</div><div class="bubble ai" style="white-space:normal">${displayText}</div>`;
+  mi.appendChild(row);
+
+  // Gate-fail: show only restart button, no assessment buttons
+  if(isGateFail){
+    const restartWrap=document.createElement("div");
+    restartWrap.style.cssText="padding-left:38px;margin-bottom:16px;margin-top:8px";
+    const restartBtn=document.createElement("button");
+    restartBtn.className="ans-btn";
+    restartBtn.style.cssText="width:100%;padding:14px 16px;font-size:14px;text-align:center;color:rgba(255,255,255,0.7)";
+    restartBtn.textContent=fr()?"← Recommencer l'évaluation":"← Restart assessment";
+    restartBtn.onclick=()=>restart();
+    restartWrap.appendChild(restartBtn);
+    mi.appendChild(restartWrap);
+  } else if(qKey){
+    // Normal answer buttons
+    const opts=OPTS[qKey]||[];
+    if(opts.length>0){
+      const block=buildAnswerBlock(qKey);
+      mi.appendChild(block);
+    } else {
+      const fallback=document.createElement("div");
+      fallback.style.cssText="padding-left:38px;margin-bottom:16px";
+      fallback.innerHTML=`<div style="font-size:12px;color:rgba(255,255,255,0.45);font-family:monospace;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:8px;border:1px solid rgba(255,255,255,0.1)">${fr()?"Tapez votre réponse ci-dessous ↓":"Type your response below ↓"}</div>`;
+      mi.appendChild(fallback);
+      setTimeout(()=>{ $("ti").focus(); $("ti").style.borderColor="rgba(255,255,255,0.5)"; setTimeout(()=>$("ti").style.borderColor="",2000); },100);
+    }
+  }
+  updateProgress(qKey);
+  scrollToBottom();
+}
+
+function appendTyping(){
+  const mi=$("mi");
+  const t=document.createElement("div");
+  t.id="typing-row";
+  t.className="msg-row ai";
+  t.innerHTML=`<div class="ai-avatar">◈</div><div class="bubble ai"><div class="typing"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  mi.appendChild(t);
+  scrollToBottom();
+}
+
+function removeTyping(){ const t=$("typing-row"); if(t)t.remove(); }
+
+function appendError(msg){
+  const mi=$("mi");
+  const e=document.createElement("div");
+  e.className="error-msg";
+  e.textContent="⚠ "+msg;
+  mi.appendChild(e);
+  scrollToBottom();
+}
+
+// ── Answer block — built once, locked on submit ───────────────────────────────
+function buildAnswerBlock(qKey){
+  const block=document.createElement("div");
+  block.className="answers-block";
+  const isMulti=MULTI_SELECT.has(qKey);
+
+  // Reference card
+  const rc=REFS[qKey];
+  if(rc){
+    const rcard=document.createElement("div");
+    rcard.className="ref-card";
+    rcard.innerHTML=`<div class="ref-label">${fr()?"Guide de référence":"Reference guide"}</div><div class="ref-title">${rc.title}</div><div class="ref-desc">${rc.desc}</div><a class="ref-link" href="https://passageexport.com/export-labelling" target="_blank">${fr()?"Voir le guide →":"View guide →"}</a>`;
+    block.appendChild(rcard);
+  }
+
+  if(isMulti){
+    // Multi-select instruction label
+    const instrEl=document.createElement("div");
+    instrEl.style.cssText="font-size:11px;color:rgba(255,255,255,0.5);font-family:monospace;margin-bottom:8px;letter-spacing:0.04em";
+    instrEl.textContent=fr()?"Sélectionnez tout ce qui s'applique, puis confirmez":"Select all that apply, then confirm";
+    block.appendChild(instrEl);
+  }
+
+  const opts=OPTS[qKey]||[];
+  let chosen=null; // single select
+  let chosenMulti=new Set(); // multi select
+  let ctxBox=null;
+  let confirmBtn=null;
+
+  function lockBlock(displayText){
+    block.querySelectorAll(".ans-btn").forEach(b=>{ b.className="ans-btn submitted"; b.onclick=null; });
+    if(ctxBox){ ctxBox.remove(); ctxBox=null; }
+    if(confirmBtn){ confirmBtn.remove(); confirmBtn=null; }
+  }
+
+  function doSubmit(opt,ctx){
+    const msg=ctx?`${opt}\n\n${fr()?"Contexte supplémentaire":"Additional context"}: ${ctx}`:opt;
+    lockBlock(opt);
+    // Track if this option should suppress sequence advance
+    if(NO_ADVANCE_OPTIONS.has(opt)) pendingNoAdvance=true;
+    sendMessage(msg);
+  }
+
+  function showCtxBox(opt){
+    if(ctxBox){ ctxBox.remove(); ctxBox=null; }
+    const isAuto=AUTO_CTX.has(opt);
+    const box=document.createElement("div");
+    box.className="ctx-box";
+    const ctxLabel=isAuto
+      ?(fr()?"Veuillez décrire la durée de conservation de chaque produit":"Please describe the shelf life of each product")
+      :(fr()?"Contexte supplémentaire (optionnel)":"Tell us more (optional)");
+    const ctxPh=isAuto
+      ?(fr()?"Ex: Produit A = 12 mois…":"e.g. Product A = 12 months, Product B = 6 months…")
+      :(fr()?"Ajoutez des détails utiles…":"Add any details that might be useful…");
+    box.innerHTML=`<div class="ctx-label">${ctxLabel}</div><textarea class="ctx-ta" rows="${isAuto?3:2}" placeholder="${ctxPh}"></textarea><div class="ctx-actions">${!isAuto?`<button class="skip-btn">${fr()?"Passer":"Skip"}</button>`:""}<button class="send-btn ${isAuto?"notready":"ready"}">${fr()?"Envoyer →":"Send →"}</button></div>`;
+    ctxBox=box;
+    block.appendChild(box);
+    const ta=box.querySelector(".ctx-ta");
+    const sendBtn=box.querySelector(".send-btn");
+    const skipBtn=box.querySelector(".skip-btn");
+    if(isAuto){ ta.addEventListener("input",()=>{ sendBtn.className=ta.value.trim()?"send-btn ready":"send-btn notready"; }); }
+    sendBtn.onclick=()=>{ if(isAuto&&!ta.value.trim())return; doSubmit(opt,ta.value.trim()); };
+    if(skipBtn) skipBtn.onclick=()=>doSubmit(opt,"");
+    setTimeout(()=>{ 
+      box.scrollIntoView({behavior:"smooth",block:"nearest"});
+      ta.focus(); 
+    },100);
+  }
+
+  opts.forEach(opt=>{
+    const btn=document.createElement("button");
+    btn.className="ans-btn";
+    btn.dataset.opt=opt;
+    btn.textContent=opt;
+
+    if(isMulti){
+      btn.onclick=()=>{
+        if(loading) return;
+        // Toggle selection
+        if(chosenMulti.has(opt)){
+          chosenMulti.delete(opt);
+          btn.className="ans-btn";
+          btn.textContent=opt;
+        } else {
+          // Deselect "No" if other options chosen, or deselect others if "No" chosen
+          if(opt.startsWith("No")){ chosenMulti.clear(); block.querySelectorAll(".ans-btn").forEach(b=>{ b.className="ans-btn"; b.textContent=b.dataset.opt; }); }
+          else { if(chosenMulti.has("No — direct to consumers only")){ chosenMulti.delete("No — direct to consumers only"); block.querySelectorAll(".ans-btn").forEach(b=>{ if(b.dataset.opt.startsWith("No")){ b.className="ans-btn"; b.textContent=b.dataset.opt; }}); }}
+          chosenMulti.add(opt);
+          btn.className="ans-btn selected";
+          btn.textContent="✓ "+opt;
+        }
+        // Show/hide confirm button
+        if(chosenMulti.size>0){
+          if(!confirmBtn){
+            confirmBtn=document.createElement("button");
+            confirmBtn.className="send-btn ready";
+            confirmBtn.style.cssText="width:100%;margin-top:8px;padding:11px 16px;font-size:14px;border-radius:10px";
+            confirmBtn.textContent=fr()?"Confirmer la sélection →":"Confirm selection →";
+            confirmBtn.onclick=()=>{
+              const answer="We supply: "+[...chosenMulti].join(", ");
+              lockBlock(answer);
+              sendMessage(answer);
+            };
+            block.appendChild(confirmBtn);
+          }
+        } else {
+          if(confirmBtn){ confirmBtn.remove(); confirmBtn=null; }
+        }
+        scrollToBottom();
+      };
+    } else {
+      btn.onclick=()=>{
+        if(loading) return;
+        if(chosen===opt){
+          // Deselect
+          chosen=null;
+          btn.className="ans-btn";
+          btn.textContent=opt;
+          if(ctxBox){ ctxBox.remove(); ctxBox=null; }
+          return;
+        }
+        chosen=opt;
+        block.querySelectorAll(".ans-btn").forEach(b=>{
+          b.className=b.dataset.opt===opt?"ans-btn selected":"ans-btn dimmed";
+          if(b.dataset.opt===opt) b.textContent="✓ "+opt;
+          else b.textContent=b.dataset.opt;
+        });
+        const showCtx=TELL_US_MORE.has(qKey)||AUTO_CTX.has(opt);
+        if(showCtx){ showCtxBox(opt); }
+        else { doSubmit(opt,""); }
+      };
+    }
+    block.appendChild(btn);
+  });
+
+  return block;
+}
+
+// ── Send message ──────────────────────────────────────────────────────────────
+async function sendMessage(text){
+  if(!text.trim()||loading) return;
+  // Detect storage classification from Q08 answer
+  if(Q_SEQUENCE[currentQIndex]==="Q08"){
+    const t=text.toLowerCase();
+    if(t.includes("ambient")||t.includes("shelf-stable")||t.includes("shelf stable")) storageClassification="ambient";
+    else if(t.includes("chilled")) storageClassification="chilled";
+    else if(t.includes("frozen")) storageClassification="frozen";
+  }
+  messages.push({role:"user",content:text});
+  appendUserBubble(text);
+  setLoading(true);
+  await callAPI();
+}
+
+function sendTyped(){ const v=$("ti").value.trim(); if(v) sendMessage(v); $("ti").value=""; updateArrow(); }
+function onKey(e){ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendTyped();} }
+function updateArrow(){ $("sa").disabled=!$("ti").value.trim()||loading; }
+
+// ── Loading ───────────────────────────────────────────────────────────────────
+function setLoading(val){
+  loading=val;
+  $("sa").disabled=val;
+  if(val) appendTyping();
+  else removeTyping();
+}
+
+// ── Phase dots ────────────────────────────────────────────────────────────────
+const dotColors=["#1A3C5E","#1A5C38","#B7620A","#6B21A8"];
+function updatePhases(text){
+  const t=text.toLowerCase();
+  if(t.match(/registr|licen|haccp|certif|traceab|export health|ehs|ehc/)) phasesLit.add(0);
+  if(t.match(/shelf.?life|packag|label|allergen|barcode|nutrition|ingredient|frozen|chilled|ambient/)) phasesLit.add(1);
+  if(t.match(/capac|cold.?chain|reefer|quality.?check|supply|dispatch|despatch/)) phasesLit.add(2);
+  if(t.match(/pric|payment|invoice|moq|working.?capital|insur|recall/)) phasesLit.add(3);
+  for(let i=0;i<4;i++){
+    const d=$("d"+i);
+    d.style.background=phasesLit.has(i)?dotColors[i]:"rgba(255,255,255,0.2)";
+  }
+  $("pl").textContent=phasesLit.size+"/4 "+(fr()?"phases couvertes":"phases covered");
+}
+
+// ── Report ────────────────────────────────────────────────────────────────────
+function renderReport(report){
+  showScreen("report-screen");
+  $("report-screen").style.display="flex";
+  $("banner").style.display="none";
+  const b=BAND[report.band]||BAND["Developing"];
+  const p=PW[report.recommendedPathway]||PW["Incubation"];
+  const phases=[{k:"regulatory",l:"Regulatory",max:18},{k:"product",l:"Product & Market",max:51},{k:"operations",l:"Operations",max:33},{k:"commercial",l:"Commercial",max:27}];
+  let phHTML="";
+  phases.forEach((ph,i)=>{
+    const d=report.phases?.[ph.k]||{score:0,max:ph.max};
+    const pct=d.max>0?(d.score/d.max)*100:0;
+    const sc=pct>=80?"#1A5C38":pct>=50?"#2E86C1":pct>=25?"#B7620A":"#B91C1C";
+    phHTML+=`<div class="ph-row"><div class="ph-head"><span style="color:${PHC[i]};font-weight:700">${ph.l}</span><span style="color:${sc};font-family:monospace">${d.score}/${d.max}</span></div><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${sc}"></div></div>${d.summary?`<div class="ph-sum">${esc(d.summary)}</div>`:""}${d.gap?`<div class="ph-gap">⚠ ${esc(d.gap)}</div>`:""}</div>`;
+  });
+  let priHTML=(report.topPriorities||[]).map((p,i)=>`<div class="pri-row"><div class="pri-num">${i+1}</div><div style="font-size:14px;color:#334155;line-height:1.6">${esc(p)}</div></div>`).join("");
+  $("rw").innerHTML=`
+    <div class="report-card">
+      <div class="rh">
+        <div class="rh-eyebrow">${fr()?"PASSAGE EXPORT GROUP — RAPPORT ERSA":"PASSAGE EXPORT GROUP — ERSA REPORT"}</div>
+        <div class="rh-biz">${esc(report.businessName||"")}</div>
+        <div class="rh-sub">${esc(report.producerName||"")} · ${esc(report.productRange||"")}</div>
+      </div>
+      <div class="band-bar" style="background:${b.bg};border-bottom:2px solid ${b.c}30">
+        <div><div style="font-size:11px;font-family:monospace;font-weight:700;color:${b.c};letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px">${fr()?"NIVEAU DE MATURITÉ EXPORT":"EXPORT READINESS BAND"}</div><div style="font-size:26px;font-weight:900;color:${b.c}">${b.l}</div></div>
+        <div style="text-align:right"><div class="band-score" style="color:${b.c}">${report.totalScore}</div><div style="font-size:13px;color:#64748b">/135</div></div>
+      </div>
+      <div class="rb">
+        <p class="rationale" style="border-color:${b.c}">${esc(report.bandRationale||"")}</p>
+        <div class="sec-title">${fr()?"SCORES PAR PHASE":"PHASE SCORES"}</div>${phHTML}
+        ${priHTML?`<div style="margin:24px 0 0"><div class="sec-title">${fr()?"PRIORITÉS IMMÉDIATES":"IMMEDIATE PRIORITIES"}</div>${priHTML}</div>`:""}
+        <div class="pw-box" style="margin-top:24px;border-color:${p.c}40">
+          <div class="sec-title">${fr()?"PARCOURS RECOMMANDÉ":"RECOMMENDED PATHWAY"}</div>
+          <div class="pw-name" style="color:${p.c}">${p.d}</div>
+          <div class="pw-rat">${esc(report.pathwayRationale||"")}</div>
+          <div class="pw-cta">→ ${fr()?"Contactez Passage Export Group.":"Contact Passage Export Group to begin your pathway."}</div>
+          <div class="pw-email">hello@passageexport.com</div>
+        </div>
+      </div>
+    </div>
+    <button class="new-btn" onclick="restart()" style="margin-bottom:8px">${fr()?"Nouvelle évaluation":"Start new assessment"}</button>
+    <button class="new-btn" onclick="window.print()" style="background:rgba(144,202,249,0.1);border-color:rgba(144,202,249,0.3);color:#90CAF9">⬇ ${fr()?"Imprimer / Enregistrer en PDF":"Print / Save as PDF"}</button>`;
+}
+
+// ── Restart ───────────────────────────────────────────────────────────────────
+function restart(){
+  messages=[];loading=false;phasesLit=new Set();mkts=[];currentQIndex=-1;pendingNoAdvance=false;storageClassification=null;
+  document.querySelectorAll(".mkt-btn").forEach(b=>b.classList.remove("on"));
+  ["fn","fb","fp","fe"].forEach(id=>$(id).value="");
+  $("sb").className="start-btn notready";
+  $("mi").innerHTML="";
+  $("banner").style.display="block";
+  for(let i=0;i<4;i++) $("d"+i).style.background="rgba(255,255,255,0.2)";
+  $("pl").textContent="0/4 phases covered";
+  $("progress-fill").style.width="0%";
+  $("progress-label").textContent="0 of 45";
+  showScreen("lang-screen");
+}
+</script>
+</body>
+</html>
