@@ -216,6 +216,18 @@ INTAKE DATA: You will receive the producer's name, business name, product range,
 
 ELIGIBILITY GATES: If the answer to Gate Q1 or Gate Q2 is No or Expired, immediately inform the producer they are Not Eligible. Your response MUST contain the exact phrase "Not Eligible" — this is used by the system to stop the assessment. Explain warmly why registration/licensing is a prerequisite, and tell them Passage will make contact to support their path to eligibility. Do not ask any further questions. Do not append any [ERSA_Q] tag. End the conversation there.
 
+COMPULSORY vs DESIRABLE: When identifying gaps, classify each as follows.
+COMPULSORY (must be resolved before Passage can coordinate a shipment, or causes importer rejection): GATE1, GATE2, Q01, Q02, Q08, Q09, Q12, Q13, Q15, Q16, Q17, Q18, Q19, Q20, Q21, Q22, Q28 (frozen/chilled only), Q29 (frozen/chilled only), Q38, Q41, Q42.
+DESIRABLE (good practice, required for Passage verification, not an immediate shipment blocker): Q03, Q04, Q05, Q06, Q10, Q11, Q14, Q23, Q24, Q25, Q26, Q27, Q30, Q31, Q32, Q33, Q34, Q35, Q36, Q37, Q39, Q40, Q43.
+
+Q07 is a ROUTING QUESTION only — do not list it as a gap. If the answer indicates animal-derived ingredients, set animalDerived:true in the JSON. Do not state specific documentation requirements in the report — the system will display a general warning.
+
+EXPORT HEALTH CERTIFICATE: This document is issued by the Agricultural Marketing Board of Mauritius (or equivalent Mauritian authority). It is NOT issued by the destination country. Always write "Export Health Certificate" in full on first use. Do not imply it is a destination country requirement.
+
+TRACEABILITY (Q05, Q06): Ingredient and batch traceability records are NOT a legal border-refusal trigger. They are a Passage verification requirement and an importer expectation. Do not classify them as Compulsory in gap analysis.
+
+PASSAGE CAN HELP lines: Never reference the EDB or any specific government body. Refer only to Passage's own services, templates, advisory support, or network.
+
 ASSESSMENT STRUCTURE — 4 phases, 45 questions:
 
 PHASE 1 — REGULATORY READINESS
@@ -343,7 +355,7 @@ NEVER use a tag that does not match the question you just asked. Always verify t
 FINAL SYNTHESIS: After all phases, output ONLY this JSON:
 
 ERSA_REPORT_JSON:
-{"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","phases":{"regulatory":{"score":0,"max":18,"summary":"","gap":null},"product":{"score":0,"max":51,"summary":"","gap":null},"operations":{"score":0,"max":33,"summary":"","gap":null},"commercial":{"score":0,"max":27,"summary":"","gap":null}},"totalScore":0,"band":"Pre-readiness","bandRationale":"","topPriorities":["","",""],"recommendedPathway":"Incubation","pathwayRationale":"","packagingGap":false}`;
+{"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","animalDerived":false,"phases":{"regulatory":{"score":0,"max":18,"summary":"","gaps":[]},"product":{"score":0,"max":51,"summary":"","gaps":[]},"operations":{"score":0,"max":33,"summary":"","gaps":[]},"commercial":{"score":0,"max":27,"summary":"","gaps":[]}},"quickWins":[],"totalScore":0,"band":"Pre-readiness","bandRationale":"","recommendedPathway":"Verification","pathwayRationale":""}`;
 
 // ── Answer options ────────────────────────────────────────────────────────────
 const OPTS={
@@ -392,6 +404,97 @@ const OPTS={
   Q41:["Yes — fully registered with company number, VAT, and business bank account","Partially — registered but some elements incomplete","No — operating informally without formal registration"],
   Q42:["Yes — product liability insurance in place","In progress — insurance being arranged","No — no product liability insurance"],
   Q43:["Yes — documented recall procedure in place and staff are trained on it","Partially — procedure exists but is not formally documented or tested","No — no recall procedure in place"],
+};
+
+const OPTS_FR={
+  GATE1:["Oui — enregistrée et conforme","En cours — enregistrement en cours","Non — pas encore enregistrée"],
+  GATE2:["Oui — valide et à jour","Expirée — renouvellement en cours","Non — aucune licence détenue"],
+
+  Q01:["Oui — Certificat sanitaire obtenu pour au moins un produit","Pas encore — mais l'installation est prête pour une inspection","Pas encore — préparation de l'installation requise"],
+
+  Q02:["Oui — l'installation répond aux normes d'inspection","Peut-être — des améliorations sont nécessaires avant l'inspection","Non — une préparation importante est nécessaire avant de demander une inspection"],
+
+  Q03:["HACCP","ISO 22000","HACCP et ISO 22000","Procédures internes — sans certification formelle","Aucun système structuré en place"],
+
+  Q04:["Oui — tous les CCP documentés, surveillés et enregistrés","Partiellement — certaine documentation en place","Non — les contrôles sont informels ou non documentés"],
+
+  Q05:["Oui — traçabilité complète des ingrédients","Partiellement — enregistrements incomplets","Non — aucun système formel de traçabilité"],
+
+  Q06:["Oui — traçabilité complète des lots à l'expédition","Partiellement — certains enregistrements maintenus","Non — aucun système de traçabilité des produits finis"],
+
+  Q07:["Non — ingrédients d'origine végétale ou minérale uniquement","Oui — ingrédients laitiers ou œufs","Oui — viande ou fruits de mer","Oui — miel ou autres ingrédients d'origine animale","Incertain"],
+
+  Q08:["Ambiant / stable — aucune réfrigération requise","Réfrigéré (0–5°C)","Congelé (−18°C ou moins)"],
+
+  Q09:["Moins de 3 mois","3 – 6 mois","6 – 12 mois","Plus de 12 mois","J'ai plusieurs produits et la durée de conservation varie selon chaque produit"],
+
+  Q10:["Oui — validée par laboratoire accrédité","Oui — validée par tests internes documentés","Partiellement — tests informels non documentés formellement","Non — durée de conservation estimée, non validée"],
+
+  Q11:["Oui — entièrement documentée et sous contrôle de version","Partiellement — documentation incomplète","Non — formulation non documentée"],
+
+  Q12:["Oui — certifié alimentaire et adapté à la température","Certifié alimentaire mais aptitude thermique non confirmée","Non certifié — spécification non vérifiée"],
+
+  Q13:["Oui — cartons testés et norme documentée en place","Cartons adaptés mais aucune norme formelle — approvisionnement ad hoc","Emballage adapté nationalement mais non validé pour l'export","Aucune spécification formelle — approvisionnement selon disponibilité"],
+
+  Q14:["Oui — exporté avec succès vers des marchés internationaux","Oui — exporté dans la région mais pas vers les marchés principaux","Non — aucune expérience préalable d'export"],
+
+  Q15:["Oui — déclaration complète incluant tous les sous-ingrédients","Partiellement — ingrédients principaux listés mais sous-ingrédients incomplets","Non — liste incomplète ou absente"],
+
+  Q16:["Oui — tous les allergènes clairement déclarés","Partiellement — déclaration incomplète","Non — déclaration absente ou peu claire"],
+
+  Q17:["Oui — tableau nutritionnel conforme à tous les marchés","Partiellement — format non entièrement conforme","Non — tableau absent"],
+
+  Q18:["Oui — unités métriques (g, kg, ml ou l)","Non — unités non métriques ou poids net absent"],
+
+  Q19:["Oui — mention Produit de Maurice présente","Non — pays d'origine non déclaré"],
+
+  Q20:["Oui — nom et adresse de l'importateur inclus","Non — coordonnées non encore incluses"],
+
+  Q21:["Oui — code-barres EAN-13 enregistré sur toutes les références","En cours — enregistrement en cours","Non — aucun code-barres"],
+
+  Q22:["Anglais uniquement — Australie et Royaume-Uni","Anglais et français — Canada","Français — France / UE","L'étiquette ne répond aux exigences d'aucun marché cible"],
+
+  Q23:["Oui — fichiers artwork modifiables au bon format","Partiellement — certains fichiers disponibles","Non — aucun fichier artwork modifiable"],
+
+  Q24:["Moins de 500 unités/mois","500 – 2 000 unités/mois","2 000 – 5 000 unités/mois","5 000 – 20 000 unités/mois","Plus de 20 000 unités/mois"],
+
+  Q25:["Constant — volumes stables et prévisibles","Variation saisonnière","Variable — irrégulier et difficile à prévoir"],
+
+  Q26:["Oui — capacité supplémentaire disponible","Oui — mais nécessiterait personnel ou équipement supplémentaire","Peut-être — investissement important requis","Non — capacité maximale atteinte"],
+
+  Q27:["Acheteurs internationaux ou exportateurs","Détaillants ou distributeurs nationaux à l'île Maurice","Magasins ou marchés locaux uniquement","Opérateurs de restauration","Non — vente directe aux consommateurs uniquement"],
+
+  Q28:["Oui — stockage froid dédié","Partiellement — stockage partagé ou insuffisant","Non — aucun stockage froid sur site"],
+
+  Q29:["Oui — transport à température contrôlée documenté","Partiellement — transport disponible mais non documenté systématiquement","Non — chaîne du froid vers le port non établie"],
+
+  Q30:["Oui — avec enregistrements de température","Oui — sans documentation formelle de température","Non — aucune expérience de conteneur frigorifique"],
+
+  Q31:["Oui — entièrement documenté et suivi","Partiellement — documentation incomplète ou non suivie","Non — production basée sur connaissances non documentées"],
+
+  Q32:["Oui — approvisionnement constant avec spécifications convenues","Partiellement — certains ingrédients constants, d'autres variables","Non — approvisionnement varie significativement"],
+
+  Q33:["Oui — contrôles systématiques enregistrés pour chaque lot","Partiellement — contrôles effectués mais non enregistrés","Non — aucun processus formel de contrôle"],
+
+  Q34:["Oui — continuité possible","Peut-être — avec préavis et planification","Non — contraintes actuelles empêcheraient cela"],
+
+  Q35:["Oui — liste de prix export développée","En cours","Non — aucune tarification export"],
+
+  Q36:["Ex-works — l'acheteur collecte depuis notre installation","FOB — nous livrons au port de chargement, l'acheteur organise le fret ensuite","Nous n'avons pas encore défini notre base de tarification export","Je ne suis pas sûr(e) — j'aimerais en savoir plus"],
+
+  Q37:["Oui — MOQ définis","Partiellement — MOQ à l'étude","Non — aucun MOQ défini"],
+
+  Q38:["Oui — facturation en MUR avec coordonnées enregistrées","Partiellement — facturation possible mais coordonnées incomplètes","Non — capacité de facturation non établie"],
+
+  Q39:["Paiement à la livraison","Délai de 30 jours","Délai de 60 jours","Délai de 90 jours"],
+
+  Q40:["Oui — fonds de roulement suffisant","Partiellement — fonds limités, commandes à gérer soigneusement","Non — contrainte de fonds de roulement"],
+
+  Q41:["Oui — entièrement enregistrée avec numéro, TVA et compte bancaire","Partiellement — enregistrée mais incomplète","Non — opérant informellement"],
+
+  Q42:["Oui — assurance en place","En cours","Non — aucune assurance"],
+
+  Q43:["Oui — procédure documentée et personnel formé","Partiellement — procédure existante mais non documentée formellement","Non — aucune procédure de rappel"],
 };
 
 const TELL_US_MORE=new Set(["GATE1","GATE2","Q02","Q03","Q04","Q05","Q06","Q10","Q11","Q12","Q13","Q14","Q16","Q17","Q21","Q22","Q23","Q24","Q25","Q26","Q27","Q28","Q29","Q30","Q31","Q32","Q33","Q34","Q35","Q36","Q37","Q38","Q39","Q40","Q41","Q42","Q43"]);
@@ -629,7 +732,7 @@ function appendAIMessage(text,qKey,isGateFail){
     mi.appendChild(restartWrap);
   } else if(qKey){
     // Normal answer buttons
-    const opts=OPTS[qKey]||[];
+    const opts=(fr() ? (OPTS_FR[qKey]||OPTS[qKey]) : OPTS[qKey])||[];
     if(opts.length>0){
       const block=buildAnswerBlock(qKey);
       mi.appendChild(block);
@@ -689,7 +792,7 @@ function buildAnswerBlock(qKey){
     block.appendChild(instrEl);
   }
 
-  const opts=OPTS[qKey]||[];
+  const opts=(fr() ? (OPTS_FR[qKey]||OPTS[qKey]) : OPTS[qKey])||[];
   let chosen=null; // single select
   let chosenMulti=new Set(); // multi select
   let ctxBox=null;
@@ -852,43 +955,336 @@ function renderReport(report){
   showScreen("report-screen");
   $("report-screen").style.display="flex";
   $("banner").style.display="none";
+  // Store report globally for Q&A print
+  window._ersaReport=report;
   const b=BAND[report.band]||BAND["Developing"];
-  const p=PW[report.recommendedPathway]||PW["Incubation"];
-  const phases=[{k:"regulatory",l:"Regulatory",max:18},{k:"product",l:"Product & Market",max:51},{k:"operations",l:"Operations",max:33},{k:"commercial",l:"Commercial",max:27}];
-  let phHTML="";
-  phases.forEach((ph,i)=>{
-    const d=report.phases?.[ph.k]||{score:0,max:ph.max};
-    const pct=d.max>0?(d.score/d.max)*100:0;
-    const sc=pct>=80?"#1A5C38":pct>=50?"#2E86C1":pct>=25?"#B7620A":"#B91C1C";
-    phHTML+=`<div class="ph-row"><div class="ph-head"><span style="color:${PHC[i]};font-weight:700">${ph.l}</span><span style="color:${sc};font-family:monospace">${d.score}/${d.max}</span></div><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:${sc}"></div></div>${d.summary?`<div class="ph-sum">${esc(d.summary)}</div>`:""}${d.gap?`<div class="ph-gap">⚠ ${esc(d.gap)}</div>`:""}</div>`;
+  const p=PW[report.recommendedPathway]||PW["Verification"];
+  const isFr=fr();
+  const phaseKeys=[
+    {k:"regulatory",l:isFr?"Phase 1 — Conformité réglementaire":"Phase 1 — Regulatory Readiness",max:18,c:PHC[0]},
+    {k:"product",l:isFr?"Phase 2 — Produit & marché":"Phase 2 — Product & Market Readiness",max:51,c:PHC[1]},
+    {k:"operations",l:isFr?"Phase 3 — Opérations":"Phase 3 — Operations Readiness",max:33,c:PHC[2]},
+    {k:"commercial",l:isFr?"Phase 4 — Aspects commerciaux":"Phase 4 — Commercial Readiness",max:27,c:PHC[3]}
+  ];
+  // Band scale segments
+  const bandOrder=["Pre-readiness","Developing","Near-ready","Export-ready"];
+  const bandFlex=[33,34,41,27];
+  const bandLabels=isFr
+    ?["Pré-maturité|0–33","En développement|34–67","Quasi-prêt|68–108","Prêt à l'export|109–135"]
+    :["Pre-Readiness|0–33","Developing|34–67","Near-Ready|68–108","Export-Ready|109–135"];
+  const bandColors={"Pre-readiness":"#B91C1C","Developing":"#B7620A","Near-ready":"#2E86C1","Export-ready":"#1A5C38"};
+  const currentBandIdx=bandOrder.indexOf(report.band);
+  let scaleSegs="";
+  bandOrder.forEach((bk,i)=>{
+    const isActive=i===currentBandIdx;
+    const col=bandColors[bk]||(i<currentBandIdx?"#94a3b8":"#E2E8F0");
+    const op=isActive?"1":"0.35";
+    scaleSegs+=`<div style="flex:${bandFlex[i]};background:${col};opacity:${op};border-radius:2px;height:10px"></div>`;
   });
-  let priHTML=(report.topPriorities||[]).map((p,i)=>`<div class="pri-row"><div class="pri-num">${i+1}</div><div style="font-size:14px;color:#334155;line-height:1.6">${esc(p)}</div></div>`).join("");
+  let scaleLabels="";
+  bandLabels.forEach((lbl,i)=>{
+    const isActive=i===currentBandIdx;
+    const lines=lbl.split("|");
+    scaleLabels+=`<div style="font-size:10px;font-family:monospace;text-align:center;color:${isActive?bandColors[bandOrder[i]]:"#94a3b8"};font-weight:${isActive?"700":"400"};line-height:1.5">${isActive?"▲ ":""}${lines[0]}<br>${lines[1]}</div>`;
+  });
+  // Animal-derived warning
+  const animalHTML=report.animalDerived?`
+    <div style="margin:0 0 24px;background:#FFF7ED;border:1px solid #FED7AA;border-left:4px solid #EA580C;border-radius:8px;padding:18px 20px">
+      <div style="font-size:10px;font-family:monospace;font-weight:700;color:#EA580C;letter-spacing:0.16em;text-transform:uppercase;margin-bottom:8px">⚑ ${isFr?"Ingrédients d'origine animale — important":"Animal-derived ingredients — important"}</div>
+      <div style="font-size:15px;font-weight:700;color:#1C2B3A;margin-bottom:10px">${isFr?"Votre produit peut nécessiter une documentation supplémentaire ou ne pas être exportable vers tous les marchés cibles sans évaluation complémentaire.":"Your product may require additional documentation or may not be exportable to all target markets without further assessment."}</div>
+      <div style="font-size:13px;color:#475569;line-height:1.7">${isFr?"Les exigences d'exportation varient selon le type de produit, le pourcentage d'ingrédient et le marché de destination. Contactez Passage avant de procéder à la préparation de tout envoi.":"Export eligibility and documentation requirements vary by product type, ingredient percentage, and destination market. Please contact Passage before proceeding with any export shipment preparation."}</div>
+    </div>`:"";
+  // Phase cards with full gap lists
+  let phaseHTML="";
+  phaseKeys.forEach(ph=>{
+    const d=report.phases?.[ph.k]||{score:0,max:ph.max,summary:"",gaps:[]};
+    const pct=d.max>0?Math.round((d.score/d.max)*100):0;
+    const sc=pct>=80?"#1A5C38":pct>=50?"#2E86C1":pct>=25?"#B7620A":"#B91C1C";
+    const gaps=d.gaps||[];
+    let gapsHTML="";
+    gaps.forEach(g=>{
+      const isComp=g.type==="compulsory";
+      const borderCol=isComp?"#B91C1C":"#B7620A";
+      const diffBadge=g.difficulty==="quickwin"
+        ?`<span style="font-size:10px;font-family:monospace;font-weight:700;padding:3px 8px;border-radius:4px;background:#EAFAF1;color:#1A5C38;white-space:nowrap">${isFr?"Action rapide":"Quick win"}</span>`
+        :g.difficulty==="complex"
+        ?`<span style="font-size:10px;font-family:monospace;font-weight:700;padding:3px 8px;border-radius:4px;background:#F5F3FF;color:#6B21A8;white-space:nowrap">${isFr?"Complexe":"Complex"}</span>`
+        :`<span style="font-size:10px;font-family:monospace;font-weight:700;padding:3px 8px;border-radius:4px;background:#EFF6FF;color:#2E86C1;white-space:nowrap">${isFr?"Effort moyen":"Medium effort"}</span>`;
+      const typeBadge=isComp
+        ?`<span style="font-size:10px;font-family:monospace;font-weight:700;padding:3px 8px;border-radius:4px;background:#FEE2E2;color:#B91C1C;white-space:nowrap">${isFr?"Obligatoire":"Compulsory"}</span>`
+        :`<span style="font-size:10px;font-family:monospace;font-weight:700;padding:3px 8px;border-radius:4px;background:#FEF3E2;color:#B7620A;white-space:nowrap">${isFr?"Souhaitable":"Desirable"}</span>`;
+      gapsHTML+=`<div style="border:1px solid #E2E8F0;border-left:3px solid ${borderCol};border-radius:8px;padding:14px 16px;background:white;margin-bottom:10px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;font-family:monospace;color:#94a3b8;flex-shrink:0;margin-top:2px">${esc(g.id||"")}</div>
+          <div style="font-size:14px;font-weight:600;color:#1C2B3A;line-height:1.4;flex:1">${esc(g.title||"")}</div>
+          <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">${typeBadge}${diffBadge}</div>
+        </div>
+        <div style="font-size:13px;color:#334155;line-height:1.65;margin-bottom:6px">${esc(g.action||"")}</div>
+        ${g.passage?`<div style="font-size:12px;color:#1A5C38;line-height:1.6;padding:8px 12px;background:#EAFAF1;border-radius:6px;margin-top:6px"><strong>${isFr?"Passage peut vous aider :":"Passage can help:"}</strong> ${esc(g.passage)}</div>`:""}
+      </div>`;
+    });
+    phaseHTML+=`<div style="margin:0 0 16px;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden">
+      <div style="padding:16px 20px 14px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:16px;font-weight:700;color:#0D2B45">${ph.l}</div>
+        <div style="font-size:15px;font-weight:800;font-family:monospace;color:${sc}">${d.score}/${d.max}</div>
+      </div>
+      <div style="height:5px;background:#E2E8F0"><div style="height:100%;width:${pct}%;background:${sc}"></div></div>
+      <div style="padding:20px">
+        ${d.summary?`<p style="font-size:14px;color:#475569;line-height:1.75;margin-bottom:${gaps.length?"18px":"0"}">${esc(d.summary)}</p>`:""}
+        ${gapsHTML}
+      </div>
+    </div>`;
+  });
+  // Quick wins
+  const qw=report.quickWins||[];
+  const qwHTML=qw.length?`
+    <div style="font-size:10px;font-family:monospace;font-weight:700;color:#94a3b8;letter-spacing:0.18em;text-transform:uppercase;margin:32px 0 16px">${isFr?"ACTIONS RAPIDES — priorité cette semaine":"QUICK WINS — action these first"}</div>
+    <div style="background:#EAFAF1;border:1px solid rgba(26,92,56,0.2);border-radius:12px;padding:20px;margin-bottom:16px">
+      <div style="font-size:11px;font-family:monospace;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#1A5C38;margin-bottom:14px">✦ ${isFr?"À compléter cette semaine — sans consultant ni investissement":"Items you can complete this week — no consultants, no capital required"}</div>
+      ${qw.map((item,i)=>`<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:8px">
+        <div style="width:22px;height:22px;border-radius:50%;background:#1A5C38;color:white;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:monospace;margin-top:1px">${i+1}</div>
+        <div style="font-size:13px;color:#1e4030;line-height:1.6">${esc(item)}</div>
+      </div>`).join("")}
+    </div>`:"";
+  // Email body
+  const topGaps=(report.phases?Object.values(report.phases).flatMap(ph=>(ph.gaps||[]).filter(g=>g.type==="compulsory").map(g=>g.title)).slice(0,3):[]); 
+  const emailSubj=`${isFr?"À":"To"}: hello@passageexport.com
+${isFr?"Objet":"Subject"}: ${isFr?"Rapport ERSA":"ERSA Report"} — ${esc(report.businessName||"")} — ${isFr?"Demande de rappel":"Callback Request"}`;
+  const emailBody=isFr
+    ?`Bonjour,
+
+J'ai complété l'auto-évaluation de préparation à l'export et je souhaite un rappel pour discuter de mon parcours.
+
+Entreprise : ${report.businessName||""}
+Contact : ${report.producerName||""}
+Résultat : ${b.l} — ${report.totalScore} / 135
+Marchés cibles : ${(report.targetMarkets||[]).join(", ")}
+
+Je joins à cet e-mail mon rapport ERSA et le relevé complet de l'évaluation.
+
+Merci.`
+    :`Hello,
+
+I have completed the Export Readiness Self-Assessment and would welcome a callback to discuss my pathway.
+
+Business: ${report.businessName||""}
+Contact: ${report.producerName||""}
+Result: ${b.l} — ${report.totalScore} / 135
+Target markets: ${(report.targetMarkets||[]).join(", ")}
+
+I have attached my ERSA Report and Full Assessment Record to this email.
+
+Thank you.`;
   $("rw").innerHTML=`
-    <div class="report-card">
-      <div class="rh">
-        <div class="rh-eyebrow">${fr()?"PASSAGE EXPORT GROUP — RAPPORT ERSA":"PASSAGE EXPORT GROUP — ERSA REPORT"}</div>
-        <div class="rh-biz">${esc(report.businessName||"")}</div>
-        <div class="rh-sub">${esc(report.producerName||"")} · ${esc(report.productRange||"")}</div>
+    <div style="max-width:780px;width:100%;background:white;border-radius:0;overflow:hidden;box-shadow:0 4px 40px rgba(0,0,0,0.12)">
+      <div style="background:linear-gradient(135deg,#0D2B45,#1A3C5E);padding:36px 40px 32px">
+        <div style="font-size:10px;letter-spacing:0.22em;color:#90CAF9;font-family:monospace;text-transform:uppercase;margin-bottom:10px">${isFr?"PASSAGE EXPORT GROUP — RAPPORT ERSA":"PASSAGE EXPORT GROUP — ERSA REPORT"}</div>
+        <div style="font-size:26px;font-weight:900;color:white;margin-bottom:4px">${esc(report.businessName||"")}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55)">${esc(report.producerName||"")} · ${esc(report.productRange||"")}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px;font-family:monospace">${(report.targetMarkets||[]).map(m=>esc(m)).join(" · ")}</div>
       </div>
-      <div class="band-bar" style="background:${b.bg};border-bottom:2px solid ${b.c}30">
-        <div><div style="font-size:11px;font-family:monospace;font-weight:700;color:${b.c};letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px">${fr()?"NIVEAU DE MATURITÉ EXPORT":"EXPORT READINESS BAND"}</div><div style="font-size:26px;font-weight:900;color:${b.c}">${b.l}</div></div>
-        <div style="text-align:right"><div class="band-score" style="color:${b.c}">${report.totalScore}</div><div style="font-size:13px;color:#64748b">/135</div></div>
-      </div>
-      <div class="rb">
-        <p class="rationale" style="border-color:${b.c}">${esc(report.bandRationale||"")}</p>
-        <div class="sec-title">${fr()?"SCORES PAR PHASE":"PHASE SCORES"}</div>${phHTML}
-        ${priHTML?`<div style="margin:24px 0 0"><div class="sec-title">${fr()?"PRIORITÉS IMMÉDIATES":"IMMEDIATE PRIORITIES"}</div>${priHTML}</div>`:""}
-        <div class="pw-box" style="margin-top:24px;border-color:${p.c}40">
-          <div class="sec-title">${fr()?"PARCOURS RECOMMANDÉ":"RECOMMENDED PATHWAY"}</div>
-          <div class="pw-name" style="color:${p.c}">${p.d}</div>
-          <div class="pw-rat">${esc(report.pathwayRationale||"")}</div>
-          <div class="pw-cta">→ ${fr()?"Contactez Passage Export Group.":"Contact Passage Export Group to begin your pathway."}</div>
-          <div class="pw-email">hello@passageexport.com</div>
+      <div style="background:${b.bg};border-bottom:3px solid ${b.c};padding:28px 40px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:10px;font-family:monospace;font-weight:700;color:${b.c};letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px">${isFr?"NIVEAU DE MATURITÉ EXPORT":"EXPORT READINESS BAND"}</div>
+          <div style="font-size:34px;font-weight:900;color:${b.c};line-height:1;margin-bottom:8px">${b.l}</div>
+          <div style="font-size:13px;color:${b.c};opacity:0.8;max-width:360px;line-height:1.5">${esc(report.bandRationale||"")}</div>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:4px;flex-shrink:0">
+          <div style="font-size:64px;font-weight:900;color:${b.c};line-height:1">${report.totalScore}</div>
+          <div style="font-size:18px;color:#94a3b8">/135</div>
         </div>
       </div>
+      <div style="background:#F8F6F2;border:1px solid #E8E4DC;border-radius:8px;padding:14px 18px;margin:20px 40px 0">
+        <p style="font-size:13px;color:#64748b;line-height:1.7;font-family:Georgia,serif"><strong style="color:#1C2B3A">${isFr?"Comment ce score est calculé :":"How this score works:"}</strong> ${isFr?"Chaque question est notée de 0 à 3. <strong>0</strong> = absent · <strong>1</strong> = partiel · <strong>2</strong> = adéquat · <strong>3</strong> = solide. Score maximum = 135.":"Each of the 45 questions is scored 0–3. <strong>0</strong> = not in place · <strong>1</strong> = partial · <strong>2</strong> = adequate · <strong>3</strong> = strong. Maximum score = 135."}</p>
+      </div>
+      <div style="padding:20px 40px 28px">
+        <div style="font-size:10px;font-family:monospace;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8;margin-bottom:10px">${isFr?"OÙ VOUS VOUS SITUEZ":"WHERE YOU SIT"}</div>
+        <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;gap:2px;margin-bottom:10px">${scaleSegs}</div>
+        <div style="display:flex;justify-content:space-between">${scaleLabels}</div>
+      </div>
+      <div style="padding:4px 40px 24px">
+        <p style="font-size:15px;color:#475569;line-height:1.8;border-left:3px solid ${b.c};padding-left:16px;font-style:italic">${esc(report.bandRationale||"")}</p>
+      </div>
+      ${report.animalDerived?`<div style="margin:0 40px 24px">${animalHTML}</div>`:""}
+      <div style="font-size:10px;font-family:monospace;font-weight:700;color:#94a3b8;letter-spacing:0.18em;text-transform:uppercase;padding:0 40px;margin-bottom:16px;margin-top:8px">${isFr?"SCORES PAR PHASE ET ANALYSE DES ÉCARTS":"PHASE SCORES & GAP ANALYSIS"}</div>
+      <div style="padding:0 40px 8px">${phaseHTML}</div>
+      ${qwHTML?`<div style="padding:0 40px">${qwHTML}</div>`:""}
+      <div style="font-size:10px;font-family:monospace;font-weight:700;color:#94a3b8;letter-spacing:0.18em;text-transform:uppercase;padding:0 40px;margin-bottom:16px;margin-top:32px">${isFr?"PARCOURS RECOMMANDÉ":"RECOMMENDED PATHWAY"}</div>
+      <div style="margin:0 40px 32px;background:#F8FAFC;border:2px solid rgba(183,134,10,0.25);border-radius:12px;padding:24px">
+        <div style="font-size:10px;font-family:monospace;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px">${isFr?"Passage recommande":"Passage recommends"}</div>
+        <div style="font-size:22px;font-weight:900;color:${p.c};margin-bottom:10px">${p.d}</div>
+        <p style="font-size:14px;color:#475569;line-height:1.75;margin-bottom:16px">${esc(report.pathwayRationale||"")}</p>
+      </div>
+      <div style="font-size:10px;font-family:monospace;font-weight:700;color:#94a3b8;letter-spacing:0.18em;text-transform:uppercase;padding:0 40px;margin-bottom:16px">${isFr?"CE QU'IL FAUT FAIRE MAINTENANT":"WHAT TO DO NEXT"}</div>
+      <div style="margin:0 40px 32px;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden">
+        <div style="display:flex;gap:20px;padding:24px;border-bottom:1px solid #E2E8F0;align-items:flex-start">
+          <div style="width:32px;height:32px;border-radius:50%;background:#0D2B45;color:white;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;font-family:monospace;flex-shrink:0;margin-top:2px">1</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700;color:#0D2B45;margin-bottom:6px">${isFr?"Enregistrez votre rapport ERSA":"Save your ERSA Report"}</div>
+            <div style="font-size:13px;color:#475569;line-height:1.65;margin-bottom:12px">${isFr?"Ce document contient votre niveau, vos scores par phase, l'analyse des écarts et le parcours recommandé.":"This document contains your band, phase scores, gap analysis and recommended pathway."}</div>
+            <button onclick="window.print()" style="background:#0D2B45;color:white;border:none;border-radius:6px;padding:10px 20px;font-size:13px;font-weight:700;font-family:Georgia,serif;cursor:pointer">⬇ ${isFr?"Imprimer / Enregistrer en PDF":"Print / Save report as PDF"}</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:20px;padding:24px;border-bottom:1px solid #E2E8F0;align-items:flex-start">
+          <div style="width:32px;height:32px;border-radius:50%;background:#0D2B45;color:white;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;font-family:monospace;flex-shrink:0;margin-top:2px">2</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700;color:#0D2B45;margin-bottom:6px">${isFr?"Enregistrez votre relevé complet d'évaluation":"Save your Full Assessment Record"}</div>
+            <div style="font-size:13px;color:#475569;line-height:1.65;margin-bottom:12px">${isFr?"Ce document contient chaque question et votre réponse. Passage l'utilisera pour préparer votre conversation de rappel.":"This document contains every question and your answer. Passage will use it to prepare for your callback conversation."}</div>
+            <button onclick="printQARecord()" style="background:#0D2B45;color:white;border:none;border-radius:6px;padding:10px 20px;font-size:13px;font-weight:700;font-family:Georgia,serif;cursor:pointer">⬇ ${isFr?"Imprimer / Enregistrer le relevé en PDF":"Print / Save assessment record as PDF"}</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:20px;padding:24px;align-items:flex-start">
+          <div style="width:32px;height:32px;border-radius:50%;background:#0D2B45;color:white;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;font-family:monospace;flex-shrink:0;margin-top:2px">3</div>
+          <div style="flex:1">
+            <div style="font-size:15px;font-weight:700;color:#0D2B45;margin-bottom:6px">${isFr?"Demandez un rappel à Passage":"Request a callback from Passage"}</div>
+            <div style="font-size:13px;color:#475569;line-height:1.65;margin-bottom:12px">${isFr?"Copiez le message ci-dessous, ouvrez votre client de messagerie, collez-le dans un nouvel e-mail — <strong style='color:#0D2B45'>joignez les deux PDF</strong> — et envoyez.":"Copy the message below, open your email client, paste it into a new email — <strong style='color:#0D2B45'>attach both PDFs you just saved</strong> — and send."}</div>
+            <div style="background:#F8F6F2;border:1px solid #E2E8F0;border-radius:8px;padding:16px">
+              <div style="font-size:10px;font-family:monospace;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#94a3b8;margin-bottom:8px;display:flex;align-items:center;gap:8px">${isFr?"Copiez ce message —":"Copy this message —"} <span style="background:#0D2B45;color:white;padding:2px 8px;border-radius:3px;letter-spacing:0.08em">${isFr?"JOIGNEZ LES DEUX PDF AVANT D'ENVOYER":"ATTACH BOTH PDFs BEFORE SENDING"}</span></div>
+              <div style="font-size:12px;font-family:monospace;color:#475569;margin-bottom:8px;padding:6px 10px;background:white;border:1px solid #E2E8F0;border-radius:4px;white-space:pre">${emailSubj}</div>
+              <div id="ersa-email-body" style="font-size:12px;color:#334155;line-height:1.65;white-space:pre-wrap;padding:10px 12px;background:white;border:1px solid #E2E8F0;border-radius:4px;margin-bottom:10px;font-family:Georgia,serif">${emailBody}</div>
+              <button onclick="copyEmailBody()" style="background:#0D2B45;color:white;border:none;border-radius:6px;padding:9px 18px;font-size:12px;font-weight:700;font-family:Georgia,serif;cursor:pointer;width:100%">${isFr?"Copier le message":"Copy message to clipboard"}</button>
+              <div id="copy-confirm" style="font-size:11px;font-family:monospace;color:#1A5C38;text-align:center;margin-top:6px;display:none">✓ ${isFr?"Copié — ouvrez votre messagerie, collez, joignez les deux PDF et envoyez":"Copied — open your email, paste, attach both PDFs, and send"}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="background:#F8F6F2;border-top:1px solid #E2E8F0;padding:20px 40px;text-align:center">
+        <p style="font-size:11px;color:#94a3b8;line-height:1.7;font-family:monospace">PASSAGE EXPORT GROUP · passageexport.com · Mauritius<br>
+        ${isFr?"Rapport généré le":"Report generated"} ${new Date().toLocaleDateString(isFr?"fr-FR":"en-AU",{day:"numeric",month:"long",year:"numeric"})} ${isFr?"par le système ERSA":"by the Passage ERSA system"}<br>
+        ${isFr?"Les réponses sont déclarées par le producteur et n'ont pas été vérifiées indépendamment":"Scores and recommendations are based on self-reported responses and have not been independently verified"}</p>
+      </div>
     </div>
-    <button class="new-btn" onclick="restart()" style="margin-bottom:8px">${fr()?"Nouvelle évaluation":"Start new assessment"}</button>
-    <button class="new-btn" onclick="window.print()" style="background:rgba(144,202,249,0.1);border-color:rgba(144,202,249,0.3);color:#90CAF9">⬇ ${fr()?"Imprimer / Enregistrer en PDF":"Print / Save as PDF"}</button>`;
+    <button class="new-btn" onclick="restart()" style="margin-top:16px;margin-bottom:8px">${isFr?"Nouvelle évaluation":"Start new assessment"}</button>`;
+}
+
+function copyEmailBody(){
+  const el=document.getElementById("ersa-email-body");
+  if(el) navigator.clipboard.writeText(el.innerText).then(()=>{
+    const c=document.getElementById("copy-confirm");
+    if(c){c.style.display="block";setTimeout(()=>c.style.display="none",4000);}
+  });
+}
+
+function printQARecord(){
+  const report=window._ersaReport||{};
+  const isFr=fr();
+  const today=new Date().toLocaleDateString(isFr?"fr-FR":"en-AU",{day:"numeric",month:"long",year:"numeric"});
+  // Q label map
+  const qLabels={
+    GATE1:isFr?"Votre entreprise est-elle formellement enregistrée avec un numéro de société actif ?":"Is your business formally registered with an active company number?",
+    GATE2:isFr?"Votre entreprise détient-elle une licence ou autorisation d'exploitation alimentaire en vigueur ?":"Does your business hold a current food business licence or permit?",
+    Q01:isFr?"Votre entreprise a-t-elle déjà obtenu un Certificat sanitaire à l'exportation pour un produit quelconque ?":"Has your business previously received an Export Health Certificate for any product?",
+    Q02:isFr?"Votre installation de production est-elle prête pour une inspection en vue d'un Certificat sanitaire à l'exportation aujourd'hui si demandé ?":"Is your production facility ready for an Export Health Certificate inspection today if requested?",
+    Q03:isFr?"Votre entreprise dispose-t-elle d'un système de gestion de la sécurité alimentaire ?":"Does your business have a food safety management system in place?",
+    Q04:isFr?"Vos Points de Contrôle Critiques sont-ils documentés et surveillés avec enregistrements ?":"Are your Critical Control Points documented and actively monitored with records?",
+    Q05:isFr?"Enregistrez-vous la traçabilité des ingrédients (fournisseur, numéro de lot, date de livraison) ?":"Do you record ingredient traceability — supplier name, batch number and delivery date?",
+    Q06:isFr?"Enregistrez-vous la traçabilité des produits finis par lot ?":"Do you record finished goods batch traceability for every batch?",
+    Q07:isFr?"Votre produit contient-il des ingrédients d'origine animale ?":"Does your product contain animal-derived ingredients?",
+    Q08:isFr?"Quelle est la classification de conservation de votre produit ?":"What is your product's storage classification?",
+    Q09:isFr?"La durée de conservation de votre produit a-t-elle été établie et déclarée ?":"Has your product's shelf life been established and declared?",
+    Q10:isFr?"La durée de conservation a-t-elle été validée par des tests de laboratoire formels ?":"Has your product's shelf life been validated through formal laboratory or challenge testing?",
+    Q11:isFr?"La formulation de votre produit est-elle documentée ?":"Is your product formulation documented?",
+    Q12:isFr?"Votre emballage primaire est-il certifié alimentaire et adapté à la température ?":"Is your primary packaging food-grade certified and temperature-appropriate?",
+    Q13:isFr?"Disposez-vous d'un standard de carton documenté avec votre fournisseur d'emballage externe ?":"Do you have a documented carton standard with your outer packaging supplier?",
+    Q14:isFr?"Votre produit a-t-il déjà été transporté dans des conditions de fret export commercial ?":"Has your product been transported under commercial export freight conditions previously?",
+    Q15:isFr?"Tous les ingrédients sont-ils listés sur l'étiquette en ordre décroissant de poids ?":"Are all ingredients listed on your label in descending order of weight?",
+    Q16:isFr?"Tous les allergènes majeurs sont-ils clairement déclarés sur l'étiquette ?":"Are all major allergens clearly declared on your label?",
+    Q17:isFr?"Votre étiquette comporte-t-elle un tableau nutritionnel dans le format requis ?":"Does your label include a Nutrition Information Panel in the correct format?",
+    Q18:isFr?"Le poids net est-il déclaré en unités métriques sur l'étiquette ?":"Is the net weight declared in metric units on your label?",
+    Q19:isFr?"Votre étiquette comporte-t-elle une mention d'origine du pays ?":"Does your label include a country of origin statement?",
+    Q20:isFr?"Votre étiquette comporte-t-elle le nom et l'adresse d'un importateur dans le marché de destination ?":"Does your label include the name and address of an importer in the destination market?",
+    Q21:isFr?"Votre étiquette porte-t-elle un code-barres EAN-13 enregistré auprès de GS1 ?":"Does your label carry a registered EAN-13 / GS1-compliant barcode?",
+    Q22:isFr?"Votre étiquette est-elle dans la langue ou les langues requises pour vos marchés cibles ?":"Is your label in the required language(s) for your target markets?",
+    Q23:isFr?"Disposez-vous de fichiers artwork modifiables et prêts à imprimer pour votre emballage actuel ?":"Do you hold editable, print-ready artwork files for your current packaging?",
+    Q24:isFr?"Combien d'unités pouvez-vous allouer à des commandes export par mois ?":"How many units could you allocate to export orders per month?",
+    Q25:isFr?"Votre volume de production disponible pour l'export est-il constant d'un mois à l'autre ?":"Is your export-available production volume consistent month-on-month?",
+    Q26:isFr?"Si la demande export doublait dans les 12 prochains mois, votre production pourrait-elle suivre ?":"If your export demand doubled within 12 months, could your production scale to meet it?",
+    Q27:isFr?"Approvisionnez-vous actuellement des détaillants, distributeurs ou opérateurs de restauration ?":"Do you currently supply retailers, distributors, or foodservice operators?",
+    Q28:isFr?"Votre installation dispose-t-elle d'un stockage froid dédié à la température requise ?":"Does your facility have dedicated cold storage at the required temperature?",
+    Q29:isFr?"Pouvez-vous maintenir une chaîne du froid ininterrompue de votre installation au port de chargement ?":"Can you maintain an unbroken cold chain from your facility to the port of loading?",
+    Q30:isFr?"Avez-vous déjà exporté des produits réfrigérés ou congelés dans un conteneur frigorifique ?":"Have you previously exported chilled or frozen products in a reefer container?",
+    Q31:isFr?"Votre processus de production est-il documenté ?":"Is your production process documented?",
+    Q32:isFr?"Vos ingrédients clés sont-ils approvisionnés de manière constante auprès des mêmes fournisseurs ?":"Are your key ingredients sourced consistently from the same suppliers?",
+    Q33:isFr?"Effectuez-vous des contrôles qualité systématiques avant que les marchandises soient prêtes à l'expédition ?":"Do you conduct systematic quality checks before goods are marked ready for despatch?",
+    Q34:isFr?"Pourriez-vous maintenir une fourniture export ininterrompue pendant six mois si un importateur doublait sa commande ?":"Could you maintain uninterrupted export supply for six months if a major importer doubled their order?",
+    Q35:isFr?"Avez-vous développé une liste de prix export, séparée de vos prix nationaux ?":"Have you developed an export price list, separate from your domestic pricing?",
+    Q36:isFr?"Vos produits export sont-ils tarifés en départ usine ou FOB ?":"Do you price your export goods on an ex-works or FOB basis?",
+    Q37:isFr?"Avez-vous défini des quantités minimales de commande pour vos produits export ?":"Have you defined minimum order quantities for your export products?",
+    Q38:isFr?"Votre entreprise peut-elle émettre des factures commerciales formelles en MUR ?":"Can your business issue formal commercial invoices in Mauritian Rupees?",
+    Q39:isFr?"Quelles conditions de paiement pouvez-vous offrir à Passage en tant qu'acheteur export ?":"What payment terms can your business offer Passage as your export buyer?",
+    Q40:isFr?"Votre entreprise dispose-t-elle d'un fonds de roulement suffisant pour financer la production export à l'avance ?":"Does your business have sufficient working capital to fund export production in advance?",
+    Q41:isFr?"Votre entreprise est-elle formellement enregistrée avec numéro de société, TVA le cas échéant, et compte bancaire dédié ?":"Is your business formally registered with company number, VAT if applicable, and a dedicated bank account?",
+    Q42:isFr?"Votre entreprise dispose-t-elle d'une assurance responsabilité produits ?":"Does your business have product liability insurance in place?",
+    Q43:isFr?"Votre entreprise dispose-t-elle d'une procédure de rappel de produits documentée ?":"Does your business have a documented food recall procedure in place?"
+  };
+  // Build Q&A from messages
+  let qaRows="";
+  const qKeys=["GATE1","GATE2","Q01","Q02","Q03","Q04","Q05","Q06","Q07","Q08","Q09","Q10","Q11","Q12","Q13","Q14","Q15","Q16","Q17","Q18","Q19","Q20","Q21","Q22","Q23","Q24","Q25","Q26","Q27","Q28","Q29","Q30","Q31","Q32","Q33","Q34","Q35","Q36","Q37","Q38","Q39","Q40","Q41","Q42","Q43"];
+  // Extract user answers from message history
+  // messages array: alternating assistant/user. User messages after the opening are answers.
+  const userMsgs=messages.filter(m=>m.role==="user").slice(1); // skip opening
+  const asstMsgs=messages.filter(m=>m.role==="assistant");
+  // Match by questionKey stored on assistant messages
+  const answered={};
+  asstMsgs.forEach((am,i)=>{
+    if(am.questionKey && userMsgs[i]){
+      answered[am.questionKey]=(answered[am.questionKey]||[]); 
+      answered[am.questionKey].push(userMsgs[i].content);
+    }
+  });
+  const phaseBlocks=[
+    {label:isFr?"Questions de qualification":"Eligibility gates",keys:["GATE1","GATE2"]},
+    {label:isFr?"Phase 1 — Conformité réglementaire":"Phase 1 — Regulatory Readiness",keys:["Q01","Q02","Q03","Q04","Q05","Q06"]},
+    {label:isFr?"Phase 2 — Produit & marché":"Phase 2 — Product & Market Readiness",keys:["Q07","Q08","Q09","Q10","Q11","Q12","Q13","Q14","Q15","Q16","Q17","Q18","Q19","Q20","Q21","Q22","Q23"]},
+    {label:isFr?"Phase 3 — Opérations":"Phase 3 — Operations Readiness",keys:["Q24","Q25","Q26","Q27","Q28","Q29","Q30","Q31","Q32","Q33","Q34"]},
+    {label:isFr?"Phase 4 — Aspects commerciaux":"Phase 4 — Commercial Readiness",keys:["Q35","Q36","Q37","Q38","Q39","Q40","Q41","Q42","Q43"]}
+  ];
+  phaseBlocks.forEach(block=>{
+    qaRows+=`<div style="padding:28px 40px 0"><div style="font-size:10px;font-family:monospace;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8;padding-bottom:10px;border-bottom:2px solid #E2E8F0">${block.label}</div>`;
+    block.keys.forEach(k=>{
+      const ans=answered[k];
+      if(!ans) return;
+      const fullAns=ans.join(" / ");
+      // Split on "Additional context:" to separate response from context
+      const parts=fullAns.split(/additional context:|contexte supplémentaire:/i);
+      const mainAns=parts[0].replace(/^(✓\s*)/,"").trim();
+      const ctx=parts[1]?parts[1].trim():"";
+      qaRows+=`<div style="border-bottom:1px solid #F1EDE6;padding:16px 0">
+        <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px">
+          <div style="font-size:10px;font-family:monospace;font-weight:700;color:#94a3b8;min-width:48px;padding-top:2px">${k}</div>
+          <div style="font-size:14px;font-weight:600;color:#1C2B3A;line-height:1.5">${esc(qLabels[k]||k)}</div>
+        </div>
+        <div style="font-size:13px;color:#475569;line-height:1.65;padding:10px 14px;background:#F8F6F2;border-left:3px solid #B7620A;border-radius:0 6px 6px 0;margin-left:58px">
+          <div style="font-size:10px;font-family:monospace;font-weight:700;color:#B7620A;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">${isFr?"Réponse":"Response"}</div>
+          ${esc(mainAns)}
+        </div>
+        ${ctx?`<div style="font-size:12px;color:#334155;line-height:1.65;padding:8px 12px;background:#EFF6FF;border-left:3px solid #2E86C1;border-radius:0 6px 6px 0;margin-top:6px;margin-left:58px">
+          <div style="font-size:10px;font-family:monospace;font-weight:700;color:#2E86C1;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">${isFr?"Contexte supplémentaire fourni":"Additional context provided"}</div>
+          ${esc(ctx)}
+        </div>`:""}
+      </div>`;
+    });
+    qaRows+="</div>";
+  });
+  const qaHTML=`<!DOCTYPE html><html lang="${isFr?"fr":"en"}"><head><meta charset="UTF-8"><title>${isFr?"Relevé d'évaluation complet":"Full Assessment Record"} — ${esc(report.businessName||"")}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Georgia,serif;background:#F8F6F2;color:#1C2B3A}div[style]{-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{background:white}.no-print{display:none}}</style></head><body>
+  <div style="max-width:780px;margin:0 auto;background:white;box-shadow:0 4px 40px rgba(0,0,0,0.1)">
+    <div style="background:linear-gradient(135deg,#0D2B45,#1A3C5E);padding:36px 40px 32px">
+      <div style="font-size:10px;letter-spacing:0.22em;color:#90CAF9;font-family:monospace;text-transform:uppercase;margin-bottom:10px">${isFr?"PASSAGE EXPORT GROUP — RELEVÉ COMPLET D'ÉVALUATION":"PASSAGE EXPORT GROUP — FULL ASSESSMENT RECORD"}</div>
+      <div style="font-size:26px;font-weight:900;color:white;margin-bottom:4px">${esc(report.businessName||"")}</div>
+      <div style="font-size:13px;color:rgba(255,255,255,0.55)">${esc(report.producerName||"")} · ${esc(report.productRange||"")}</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px;font-family:monospace">${(report.targetMarkets||[]).map(m=>esc(m)).join(" · ")} · ${isFr?"Évaluation complétée le":"Assessment completed"} ${today}</div>
+    </div>
+    <div style="background:#F0EDE6;border-bottom:2px solid #E2DDD6;padding:20px 40px">
+      <p style="font-size:13px;color:#64748b;line-height:1.7;font-family:Georgia,serif">${isFr?"Ce document est le relevé complet de l'auto-évaluation de préparation à l'export. Il contient chaque question posée et la réponse fournie. Il ne contient pas les scores ni l'analyse des écarts — ces éléments figurent dans le rapport ERSA d'accompagnement. Ce document est destiné à être partagé avec Passage Export Group lors d'une conversation de rappel ou d'intégration.":"This document is the complete record of the Export Readiness Self-Assessment. It contains every question asked and the response given. It does not contain scoring or gap analysis — those are in the accompanying ERSA Report. This document is intended to be read alongside the report and shared with Passage Export Group as part of a callback or onboarding conversation."}</p>
+    </div>
+    ${qaRows}
+    <div style="background:#F8F6F2;border-top:1px solid #E2E8F0;padding:20px 40px;margin-top:32px;text-align:center">
+      <p style="font-size:11px;color:#94a3b8;line-height:1.7;font-family:monospace">PASSAGE EXPORT GROUP · passageexport.com · Mauritius<br>${isFr?"Relevé généré le":"Full Assessment Record generated"} ${today} · ${isFr?"Les réponses sont déclarées par le producteur":"Responses are self-reported by the producer named above"}<br>${isFr?"Ce document doit être lu avec le rapport ERSA d'accompagnement":"This document should be read alongside the accompanying ERSA Report"}</p>
+    </div>
+    <div class="no-print" style="padding:20px 40px;text-align:center"><button onclick="window.print()" style="background:#0D2B45;color:white;border:none;border-radius:6px;padding:12px 28px;font-size:14px;font-weight:700;font-family:Georgia,serif;cursor:pointer">⬇ ${isFr?"Imprimer / Enregistrer en PDF":"Print / Save as PDF"}</button></div>
+  </div></body></html>`;
+  const win=window.open("","_blank");
+  if(win){ win.document.write(qaHTML); win.document.close(); }
 }
 
 // ── Restart ───────────────────────────────────────────────────────────────────
