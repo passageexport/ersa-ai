@@ -197,7 +197,7 @@ h1{font-size:28px;font-weight:900;margin-bottom:16px;line-height:1.2}
 </div>
 
 <script>
-const API_KEY="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";
+// API calls route through /api/chat proxy — no key needed in this file
 
 // ── State ────────────────────────────────────────────────────────────────────
 let lang="EN", markets=[], messages=[], loading=false, phasesLit=new Set();
@@ -512,10 +512,10 @@ async function startChat(){
 // ── API ───────────────────────────────────────────────────────────────────────
 async function callAPI(){
   try{
-    const res=await fetch("https://api.anthropic.com/v1/messages",{
+    const res=await fetch("/api/chat",{
       method:"POST",
-      headers:{"Content-Type":"application/json","x-api-key":API_KEY,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1024,system:SYS,messages:messages.map(m=>({role:m.role,content:m.content}))})
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({messages:messages.map(m=>({role:m.role,content:m.content})),system:SYS})
     });
     if(!res.ok) throw new Error(res.status);
     const data=await res.json();
