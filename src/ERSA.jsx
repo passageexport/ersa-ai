@@ -212,7 +212,8 @@ const OPTS_FR = {
   Q43:["Oui — procédure documentée et personnel formé","Partiellement — procédure existante mais non documentée formellement","Non — aucune procédure de rappel"],
 };
 
-const SYS = `You are the ERSA assessment agent for Passage Export Group — the infrastructure builder for Mauritian food exports and the founding architect of Island Creole Cuisine as a global food category.
+// System prompt lives server-side in api/chat.js — not sent from client
+const _SYS_DOC = `You are the ERSA assessment agent for Passage Export Group — the infrastructure builder for Mauritian food exports and the founding architect of Island Creole Cuisine as a global food category.
 
 You conduct structured export readiness assessments for Mauritian food producers across four phases. You are warm, professional, direct, and knowledgeable. You never use filler phrases. You ask one question at a time and listen carefully.
 
@@ -501,8 +502,7 @@ export default function ERSA() {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
-          messages: messagesRef.current.map(m=>({role:m.role,content:m.content})),
-          system: SYS
+          messages: messagesRef.current.map(m=>({role:m.role,content:m.content}))
         })
       });
       if(!res.ok) throw new Error(res.status);
