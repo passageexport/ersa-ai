@@ -376,7 +376,7 @@ function detectQ(t){
   return all[all.length-1][1];
 }
 function cleanMsg(t){ return t.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").replace(/\*\*/g,"").replace(/\*/g,"").replace(/#{1,6}\s/g,"").trim(); }
-function parseReport(t){ const i=t.indexOf("ERSA_REPORT_JSON:"); if(i<0)return null; try{ const s=t.slice(i+17).trim(); return JSON.parse(s.slice(0,s.lastIndexOf("}")+1)); }catch{return null;} }
+function parseReport(t){ const i=t.indexOf("ERSA_REPORT_JSON:"); if(i<0)return null; try{ const after=t.slice(i+17).trim(); const start=after.indexOf("{"); const end=after.lastIndexOf("}"); if(start<0||end<0)return null; return JSON.parse(after.slice(start,end+1)); }catch(e){return null;} }
 function qKeyToNum(qKey){
   if(!qKey) return null;
   if(qKey==="GATE1") return 1;
