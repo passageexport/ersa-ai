@@ -75,7 +75,7 @@ Q34: Could you maintain uninterrupted export supply for six months if a major im
 PHASE 4 — COMMERCIAL READINESS
 Q35: Have you developed an export price list — separate from your domestic pricing?
 Q36: Do you price your export goods on an ex-works or FOB basis?
-IMPORTANT FOR Q36: If the answer is Unsure, explain in plain language: Ex-works means your responsibility ends at your factory gate — the buyer arranges all transport from there. FOB means you deliver to the port of loading and responsibility transfers when goods are loaded onto the vessel. Passage's preferred model is FOB. Ask them to confirm which they use or are likely to use. Keep it to 2-3 sentences then show Q36 again.
+IMPORTANT FOR Q36: If the answer is Unsure, explain in 2-3 sentences: Ex-works means your responsibility ends at your factory gate. FOB means you deliver to the port of loading. Passage's preferred model is FOB. Then ask Q36 again. CRITICAL: When re-asking Q36 after Unsure, you MUST end with [ERSA_Q:Q36] — every time, no matter how many times Unsure is selected.
 Q37: Have you defined minimum order quantities for your export products?
 Q38: Can your business issue formal commercial invoices in Mauritian Rupees (MUR) with correct registration details?
 Q39: What payment terms can your business offer Passage as your export buyer?
@@ -156,6 +156,8 @@ FINAL SYNTHESIS: After all phases, output ONLY this JSON:
 
 ERSA_REPORT_JSON:
 {"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","animalDerived":false,"phases":{"regulatory":{"score":0,"max":18,"summary":"","gaps":[]},"product":{"score":0,"max":51,"summary":"","gaps":[]},"operations":{"score":0,"max":33,"summary":"","gaps":[]},"commercial":{"score":0,"max":27,"summary":"","gaps":[]}},"quickWins":[],"totalScore":0,"band":"Pre-readiness","bandRationale":"","recommendedPathway":"Verification","pathwayRationale":""}`;
+
+export const config = { maxDuration: 60 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
