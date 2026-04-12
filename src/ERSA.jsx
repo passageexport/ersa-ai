@@ -87,7 +87,7 @@ h1{font-size:28px;font-weight:900;margin-bottom:16px;line-height:1.2}
 const COLD_CHAIN_KEYS = new Set(["Q28","Q29","Q30"]);
 const MULTI_SELECT = new Set(["Q27"]);
 const NO_ADVANCE_OPTIONS = new Set(["Unsure — I'd like to understand more","Je ne suis pas sûr(e) — j'aimerais en savoir plus"]);
-const TELL_US_MORE = new Set(["GATE1","GATE2","Q02","Q03","Q04","Q05","Q06","Q10","Q11","Q12","Q13","Q14","Q16","Q17","Q21","Q22","Q23","Q24","Q25","Q26","Q27","Q28","Q29","Q30","Q31","Q32","Q33","Q34","Q35","Q36","Q37","Q38","Q39","Q40","Q41","Q42","Q43"]);
+const TELL_US_MORE = new Set(["GATE1","GATE2","Q02","Q03","Q04","Q05","Q06","Q10","Q11","Q12","Q13","Q14","Q16","Q17","Q21","Q22","Q23","Q24","Q25","Q26","Q27","Q28","Q29","Q30","Q31","Q32","Q33","Q34","Q35","Q37","Q38","Q39","Q40","Q41","Q42","Q43"]);
 const AUTO_CTX = new Set(["I have more than one product and shelf life varies across my range","J'ai plusieurs produits et la durée de conservation varie selon chaque produit"]);
 const REFS = {
   Q16:{title:"Allergen declaration requirements",desc:"The full list of declarable allergens differs by market. Check the guide before answering."},
@@ -127,7 +127,7 @@ const OPTS = {
   Q04:["Yes — all CCPs documented, monitored, and recorded","Partially — some documentation in place","No — hazard controls are informal or undocumented"],
   Q05:["Yes — full ingredient traceability records maintained","Partially — traceability records incomplete or inconsistent","No — no formal traceability system in place"],
   Q06:["Yes — full batch traceability from production to despatch","Partially — some records maintained but not systematically","No — no finished goods traceability system"],
-  Q07:["No — plant-based or mineral ingredients only","Yes — dairy or egg ingredients","Yes — meat or seafood ingredients","Yes — honey or other animal-derived ingredients","Unsure"],
+  Q07:["No — plant-based or mineral ingredients only","Yes — dairy or egg ingredients","Yes — meat or seafood ingredients","Yes — honey or other animal-derived ingredients"],
   Q08:["Ambient / shelf-stable — no refrigeration required","Chilled — requires continuous refrigeration (0–5°C)","Frozen — requires continuous freezing (−18°C or below)"],
   Q09:["Less than 3 months","3 – 6 months","6 – 12 months","More than 12 months","I have more than one product and shelf life varies across my range"],
   Q10:["Yes — validated by accredited laboratory testing","Yes — validated through documented internal challenge testing","Partially — informal testing conducted but not formally documented","No — shelf life is estimated, not formally validated"],
@@ -175,7 +175,7 @@ const OPTS_FR = {
   Q04:["Oui — tous les CCP documentés, surveillés et enregistrés","Partiellement — certaine documentation en place","Non — les contrôles sont informels ou non documentés"],
   Q05:["Oui — traçabilité complète des ingrédients","Partiellement — enregistrements incomplets","Non — aucun système formel de traçabilité"],
   Q06:["Oui — traçabilité complète des lots à l'expédition","Partiellement — certains enregistrements maintenus","Non — aucun système de traçabilité des produits finis"],
-  Q07:["Non — ingrédients d'origine végétale ou minérale uniquement","Oui — ingrédients laitiers ou œufs","Oui — viande ou fruits de mer","Oui — miel ou autres ingrédients d'origine animale","Incertain"],
+  Q07:["Non — ingrédients d'origine végétale ou minérale uniquement","Oui — ingrédients laitiers ou œufs","Oui — viande ou fruits de mer","Oui — miel ou autres ingrédients d'origine animale"],
   Q08:["Ambiant / stable — aucune réfrigération requise","Réfrigéré (0–5°C)","Congelé (−18°C ou moins)"],
   Q09:["Moins de 3 mois","3 – 6 mois","6 – 12 mois","Plus de 12 mois","J'ai plusieurs produits et la durée de conservation varie selon chaque produit"],
   Q10:["Oui — validée par laboratoire accrédité","Oui — validée par tests internes documentés","Partiellement — tests informels non documentés formellement","Non — durée de conservation estimée, non validée"],
@@ -406,6 +406,7 @@ export default function ERSA() {
   // Mutable refs for sequence logic (don't trigger re-render)
   const currentQIndexRef = useRef(-1);
   const pendingNoAdvanceRef = useRef(false);
+  const abortControllerRef = useRef(null); // Abort in-flight API calls on restart
   const storageClassRef = useRef(null);
   const messagesRef = useRef([]);
   const loadingRef = useRef(false);
@@ -500,12 +501,14 @@ export default function ERSA() {
   // ── API call ────────────────────────────────────────────────────────────────
   async function callAPI() {
     try {
+      abortControllerRef.current = new AbortController();
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
           messages: messagesRef.current.map(m=>({role:m.role,content:m.content}))
-        })
+        }),
+        signal: abortControllerRef.current.signal
       });
       if(!res.ok) throw new Error(res.status);
       const data = await res.json();
@@ -531,7 +534,7 @@ export default function ERSA() {
         setChatItems(prev => [...prev, {type:"ai", text:preparingMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
         setTimeout(() => {
           setReport(reportData);
-          setScreen("report");
+          setTimeout(() => setScreen("report"), 100);
           // Anonymous ping to Passage — no personal data
           fetch("/api/notify", {
             method: "POST",
@@ -574,6 +577,7 @@ export default function ERSA() {
       setChatItems(prev => [...prev, {type:"ai", text:clean, qKey, isGateFail, id: Date.now()+Math.random()}]);
       scrollToBottom(300);
     } catch(e) {
+      if(e.name==="AbortError") return; // Intentional abort from restart — do nothing
       setLoading(false);
       loadingRef.current = false;
       setChatItems(prev => [...prev, {type:"error", text: fr()?"Erreur de connexion. Veuillez réessayer.":"Connection error. Please try again.", id:Date.now()}]);
@@ -635,11 +639,13 @@ export default function ERSA() {
     setLoading(true);
     loadingRef.current = true;
     await callAPI();
-    scrollToBottom(600);
+    scrollToBottom(800);
   }
 
   // ── Restart ─────────────────────────────────────────────────────────────────
   function restart() {
+    // Abort any in-flight API call so it cannot corrupt reset state
+    if(abortControllerRef.current) abortControllerRef.current.abort();
     currentQIndexRef.current = -1;
     pendingNoAdvanceRef.current = false;
     storageClassRef.current = null;
@@ -670,7 +676,7 @@ export default function ERSA() {
           <button className="btn-primary" onClick={()=>{langRef.current="EN";setLangState("EN");setScreen("intake");}}>English</button>
           <button className="btn-ghost" onClick={()=>{langRef.current="FR";setLangState("FR");setScreen("intake");}}>Français</button>
         </div>
-        <p style={{marginTop:24,fontSize:12,color:"rgba(255,255,255,0.3)",textAlign:"center",lineHeight:1.6,maxWidth:380,fontFamily:"monospace"}}>
+        <p style={{marginTop:24,fontSize:12,color:"rgba(255,255,255,0.5)",textAlign:"center",lineHeight:1.6,maxWidth:400,margin:"24px auto 0",fontFamily:"monospace",padding:"0 16px"}}>
           For the best experience, we recommend completing this assessment on a laptop or desktop.
         </p>
       </div>
@@ -741,7 +747,7 @@ export default function ERSA() {
       {/* Input bar */}
       <div className="input-bar">
         <div className="input-inner">
-          <input ref={textInputRef} className="text-input" placeholder={fr()?"Ou tapez votre réponse…":"Or type your response…"} value={typedInput} onChange={e=>setTypedInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(typedInput.trim()){sendMessage(typedInput.trim());setTypedInput("");}}}} disabled={loading}/>
+          <input ref={textInputRef} className="text-input" placeholder={fr()?"Ou tapez votre réponse…":"Or type your response…"} value={typedInput} onChange={e=>setTypedInput(e.target.value.slice(0,500))} maxLength={500} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();if(typedInput.trim()&&!loading){sendMessage(typedInput.trim());setTypedInput("");}}}} disabled={loading}/>
           <button className="send-arrow" disabled={!typedInput.trim()||loading} onClick={()=>{if(typedInput.trim()){sendMessage(typedInput.trim());setTypedInput("");}}}>{`→`}</button>
         </div>
         <div className="phases-label">{phasesLit.size}/4 {fr()?"phases couvertes":"phases covered"}</div>
@@ -749,7 +755,7 @@ export default function ERSA() {
     </div>
   );
 
-  if(screen==="report" && report) return <ReportScreen report={report} lang={langRef.current} onRestart={restart} messages={messagesRef.current}/>;
+  if(screen==="report") return <ReportScreen report={report||{}} lang={langRef.current} onRestart={restart} messages={messagesRef.current}/>;
 
   return null;
 }
@@ -824,6 +830,7 @@ function formatMsgText(rawText){
 function AnswerBlock({qKey, lang, onSend, loadingRef, pendingNoAdvanceRef}){
   const isFr = lang==="FR";
   const [submitted, setSubmitted] = useState(false);
+  const submittedRef = useRef(false); // Ref guard for sync double-click protection
   const [chosen, setChosen] = useState(null);
   const [chosenMulti, setChosenMulti] = useState(new Set());
   const [showCtx, setShowCtx] = useState(false);
@@ -832,17 +839,21 @@ function AnswerBlock({qKey, lang, onSend, loadingRef, pendingNoAdvanceRef}){
   const opts = (isFr ? (OPTS_FR[qKey]||OPTS[qKey]) : OPTS[qKey]) || [];
   const rc = REFS[qKey];
   const isAuto = chosen ? AUTO_CTX.has(chosen) : false;
+  const MAX_CTX_CHARS = 1000; // Cap free-text to prevent token explosion
 
   function doSubmit(opt, ctx){
-    if(submitted) return;
+    // Dual guard: ref (sync) + state (async) — prevents double-fire under any timing
+    if(submittedRef.current || submitted) return;
+    submittedRef.current = true;
     setSubmitted(true);
     if(NO_ADVANCE_OPTIONS.has(opt)) pendingNoAdvanceRef.current = true;
-    const msg = ctx ? `${opt}\n\n${isFr?"Contexte supplémentaire":"Additional context"}: ${ctx}` : opt;
+    const safeCtx = ctx ? ctx.slice(0, MAX_CTX_CHARS) : "";
+    const msg = safeCtx ? `${opt}\n\n${isFr?"Contexte supplémentaire":"Additional context"}: ${safeCtx}` : opt;
     onSend(msg);
   }
 
   function handleSingleClick(opt){
-    if(submitted||loadingRef.current) return;
+    if(submittedRef.current || submitted || loadingRef.current) return;
     if(chosen===opt){
       setChosen(null);
       setShowCtx(false);
@@ -856,7 +867,7 @@ function AnswerBlock({qKey, lang, onSend, loadingRef, pendingNoAdvanceRef}){
   }
 
   function handleMultiClick(opt){
-    if(submitted||loadingRef.current) return;
+    if(submittedRef.current || submitted || loadingRef.current) return;
     setChosenMulti(prev=>{
       const next = new Set(prev);
       if(next.has(opt)){ next.delete(opt); }
@@ -870,8 +881,9 @@ function AnswerBlock({qKey, lang, onSend, loadingRef, pendingNoAdvanceRef}){
   }
 
   function confirmMulti(){
-    if(submitted||chosenMulti.size===0) return;
-    const answer = "We supply: "+[...chosenMulti].join(", ");
+    // Dual guard on Confirm button too
+    if(submittedRef.current || submitted || chosenMulti.size===0) return;
+    const answer = (isFr?"Nous approvisionnons : ":"We supply: ")+[...chosenMulti].join(", ");
     doSubmit(answer,"");
   }
 
@@ -910,11 +922,12 @@ function AnswerBlock({qKey, lang, onSend, loadingRef, pendingNoAdvanceRef}){
       {showCtx && !submitted && (
         <div className="ctx-box">
           <div className="ctx-label">{isAuto?(isFr?"Veuillez décrire la durée de conservation de chaque produit":"Please describe the shelf life of each product"):(isFr?"Contexte supplémentaire (optionnel)":"Tell us more (optional)")}</div>
-          <textarea className="ctx-ta" rows={isAuto?3:2} placeholder={isAuto?(isFr?"Ex: Produit A = 12 mois…":"e.g. Product A = 12 months, Product B = 6 months…"):(isFr?"Ajoutez des détails utiles…":"Add any details that might be useful…")} value={ctxVal} onChange={e=>setCtxVal(e.target.value)} autoFocus/>
+          <textarea className="ctx-ta" rows={isAuto?3:2} placeholder={isAuto?(isFr?"Ex: Produit A = 12 mois…":"e.g. Product A = 12 months, Product B = 6 months…"):(isFr?"Ajoutez des détails utiles…":"Add any details that might be useful…")} value={ctxVal} onChange={e=>setCtxVal(e.target.value.slice(0,MAX_CTX_CHARS))} maxLength={MAX_CTX_CHARS} autoFocus/>
+          {ctxVal.length>800&&<div style={{fontSize:10,fontFamily:"monospace",color:"rgba(255,255,255,0.35)",textAlign:"right",marginTop:4}}>{ctxVal.length}/{MAX_CTX_CHARS}</div>}
           <div className="ctx-actions">
-            {!isAuto&&<button className="skip-btn" onClick={()=>doSubmit(chosen,"")}>{isFr?"Passer":"Skip"}</button>}
-            <button className={`send-btn ${isAuto&&!ctxVal.trim()?"notready":"ready"}`} onClick={()=>{if(isAuto&&!ctxVal.trim())return;doSubmit(chosen,ctxVal.trim());}}>
-              {isFr?"Envoyer →":"Send →"}
+
+            <button className={`send-btn ${isAuto&&!ctxVal.trim()?"notready":"ready"}`} onClick={()=>{if(submittedRef.current||submitted)return;if(isAuto&&!ctxVal.trim())return;doSubmit(chosen,ctxVal.trim());}}>
+              {isFr?"Continuer →":"Continue →"}
             </button>
           </div>
         </div>
@@ -931,7 +944,10 @@ function CoffeeBreak({lang, onContinue}){
   const [done, setDone] = useState(false);
   const timerRef = useRef(null);
 
+  const resumedRef = useRef(false); // Prevent double-fire on continue
+
   function takeBreak(){
+    if(resumedRef.current) return;
     setChoice("break");
     timerRef.current = setInterval(()=>{
       setSecondsLeft(s=>{
@@ -946,6 +962,8 @@ function CoffeeBreak({lang, onContinue}){
   }
 
   function resume(){
+    if(resumedRef.current) return; // Prevent double-fire from timer + manual click
+    resumedRef.current = true;
     if(timerRef.current) clearInterval(timerRef.current);
     setChoice("continue");
     onContinue();
@@ -1120,6 +1138,97 @@ function ReportScreen({report, lang, onRestart, messages}){
     </style></head><body>${html}</body></html>`);
     win.document.close();
     setTimeout(()=>win.print(),400);
+  }
+
+  function printQARecord(){
+    const isFr2 = lang==="FR";
+    const today2 = new Date().toLocaleDateString(isFr2?"fr-FR":"en-AU",{day:"numeric",month:"long",year:"numeric"});
+    const qLabels={
+      GATE1:isFr2?"Votre entreprise est-elle formellement enregistrée ?":"Is your business formally registered with the relevant local authority?",
+      GATE2:isFr2?"Votre entreprise détient-elle une licence alimentaire en vigueur ?":"Does your facility hold a current, valid food business licence?",
+      Q01:isFr2?"Votre installation a-t-elle reçu un Export Health Certificate ?":"Has your facility ever received an Export Health Certificate?",
+      Q02:isFr2?"Votre installation serait-elle prête pour une inspection EHC aujourd'hui ?":"Would your facility meet EHC inspection standards today?",
+      Q03:isFr2?"Votre installation opère-t-elle sous un système de sécurité alimentaire reconnu ?":"Does your facility operate under a recognised food safety system?",
+      Q04:isFr2?"Vos Points de Contrôle Critiques sont-ils documentés et enregistrés ?":"Are your Critical Control Points documented, monitored, and recorded?",
+      Q05:isFr2?"Pouvez-vous tracer tous vos ingrédients jusqu'au fournisseur et au lot ?":"Can you trace all ingredients back to their supplier, batch number, and delivery date?",
+      Q06:isFr2?"Pouvez-vous tracer les lots de produits finis jusqu'à l'expédition ?":"Can you trace finished goods batches from production through to despatch?",
+      Q07:isFr2?"Votre produit contient-il des ingrédients d'origine animale ?":"Does your product contain meat, seafood, dairy, eggs, honey, or other animal-derived ingredients?",
+      Q08:isFr2?"Quelle est la classification de conservation de votre produit ?":"What is your product's storage classification?",
+      Q09:isFr2?"Quelle est la durée de conservation déclarée de votre produit ?":"What is your product's declared shelf life?",
+      Q10:isFr2?"La durée de conservation a-t-elle été validée par des tests formels ?":"Has your product's shelf life been validated through formal laboratory or documented challenge testing?",
+      Q11:isFr2?"La formulation de votre produit est-elle documentée ?":"Is your product formulation documented?",
+      Q12:isFr2?"Votre emballage primaire est-il certifié alimentaire et adapté à la température ?":"Is your primary packaging food-grade certified and temperature-appropriate?",
+      Q13:isFr2?"Votre emballage secondaire est-il adapté au fret maritime et avez-vous une norme de carton documentée ?":"Is your outer packaging suitable for palletised sea freight with a documented carton standard?",
+      Q14:isFr2?"Votre produit a-t-il déjà été transporté dans des conditions de fret export commercial ?":"Has your product been transported under commercial export freight conditions previously?",
+      Q15:isFr2?"Tous les ingrédients sont-ils listés en ordre décroissant de poids ?":"Are all ingredients listed in descending order of weight with sub-ingredients declared?",
+      Q16:isFr2?"Tous les allergènes majeurs sont-ils clairement déclarés ?":"Are all major allergens clearly declared on your label?",
+      Q17:isFr2?"Votre étiquette inclut-elle un tableau nutritionnel dans le format requis ?":"Does your label include a Nutrition Information Panel in the required format?",
+      Q18:isFr2?"Le poids net est-il déclaré en unités métriques ?":"Is the net weight declared in metric units?",
+      Q19:isFr2?"Votre étiquette inclut-elle une mention d'origine du pays ?":"Does your label include a country of origin statement?",
+      Q20:isFr2?"Votre étiquette inclut-elle le nom et l'adresse d'un importateur ?":"Does your label include the name and address of an importer in the destination market?",
+      Q21:isFr2?"Votre étiquette porte-t-elle un code-barres EAN-13 / GS1 enregistré ?":"Does your label carry a registered EAN-13 / GS1-compliant barcode?",
+      Q22:isFr2?"Votre étiquette est-elle dans la langue requise par vos marchés cibles ?":"Is your label in the required language(s) for your target markets?",
+      Q23:isFr2?"Détenez-vous les fichiers artwork modifiables de votre emballage actuel ?":"Do you hold editable, print-ready artwork files for your current packaging?",
+      Q24:isFr2?"Combien d'unités pouvez-vous allouer à l'export par mois ?":"How many units could you allocate to export orders per month?",
+      Q25:isFr2?"Votre volume de production disponible pour l'export est-il constant ?":"Is your export-available production volume consistent month-on-month?",
+      Q26:isFr2?"Votre production pourrait-elle doubler en 12 mois si la demande export le requiert ?":"If export demand doubled within 12 months, could your production scale to meet it?",
+      Q27:isFr2?"Approvisionnez-vous actuellement des détaillants, distributeurs ou opérateurs de restauration ?":"Do you currently supply retailers, distributors, or foodservice operators?",
+      Q28:isFr2?"Votre installation dispose-t-elle d'un stockage froid dédié ?":"Does your facility have dedicated cold storage at the required temperature?",
+      Q29:isFr2?"Pouvez-vous maintenir une chaîne du froid ininterrompue jusqu'au port ?":"Can you maintain an unbroken cold chain from your facility to the port of loading?",
+      Q30:isFr2?"Avez-vous déjà exporté des produits réfrigérés ou congelés en conteneur frigorifique ?":"Have you previously exported chilled or frozen products in a reefer container?",
+      Q31:isFr2?"Votre processus de production est-il documenté ?":"Is your production process documented?",
+      Q32:isFr2?"Vos ingrédients clés sont-ils approvisionnés de manière constante ?":"Are your key ingredients sourced consistently from the same suppliers?",
+      Q33:isFr2?"Effectuez-vous des contrôles qualité systématiques avant expédition ?":"Do you conduct systematic quality checks before goods are marked ready for despatch?",
+      Q34:isFr2?"Pourriez-vous maintenir un approvisionnement export ininterrompu pendant 6 mois si la demande doublait ?":"Could you maintain uninterrupted export supply for six months if a major importer doubled their order?",
+      Q35:isFr2?"Avez-vous développé une liste de prix export séparée de vos prix nationaux ?":"Have you developed an export price list separate from your domestic pricing?",
+      Q36:isFr2?"Vos produits export sont-ils tarifés en départ usine ou FOB ?":"Do you price your export goods on an ex-works or FOB basis?",
+      Q37:isFr2?"Avez-vous défini des quantités minimales de commande pour vos produits export ?":"Have you defined minimum order quantities for your export products?",
+      Q38:isFr2?"Votre entreprise peut-elle émettre des factures en MUR avec les coordonnées correctes ?":"Can your business issue formal commercial invoices in Mauritian Rupees with correct registration details?",
+      Q39:isFr2?"Quelles conditions de paiement pouvez-vous offrir à Passage ?":"What payment terms can your business offer Passage as your export buyer?",
+      Q40:isFr2?"Votre entreprise dispose-t-elle d'un fonds de roulement suffisant pour financer la production export à l'avance ?":"Does your business have sufficient working capital to fund export production in advance?",
+      Q41:isFr2?"Votre entreprise est-elle formellement enregistrée avec un numéro de société et un compte bancaire dédié ?":"Is your business formally registered with a company number, VAT if applicable, and a dedicated business bank account?",
+      Q42:isFr2?"Votre entreprise dispose-t-elle d'une assurance responsabilité produits ?":"Does your business have product liability insurance in place?",
+      Q43:isFr2?"Votre entreprise dispose-t-elle d'une procédure de rappel de produits documentée ?":"Does your business have a documented food recall procedure?"
+    };
+    const answered={};
+    const asstMsgs = messages.filter(m=>m.role==="assistant");
+    const userMsgs = messages.filter(m=>m.role==="user").slice(1);
+    asstMsgs.forEach((am,i)=>{ if(am.questionKey && userMsgs[i]) answered[am.questionKey]=userMsgs[i].content; });
+    const phaseBlocks=[
+      {label:isFr2?"Questions de qualification":"Eligibility gates",keys:["GATE1","GATE2"]},
+      {label:isFr2?"Phase 1 — Conformité réglementaire":"Phase 1 — Regulatory Readiness",keys:["Q01","Q02","Q03","Q04","Q05","Q06"]},
+      {label:isFr2?"Phase 2 — Produit & marché":"Phase 2 — Product & Market Readiness",keys:["Q07","Q08","Q09","Q10","Q11","Q12","Q13","Q14","Q15","Q16","Q17","Q18","Q19","Q20","Q21","Q22","Q23"]},
+      {label:isFr2?"Phase 3 — Opérations":"Phase 3 — Operations Readiness",keys:["Q24","Q25","Q26","Q27","Q28","Q29","Q30","Q31","Q32","Q33","Q34"]},
+      {label:isFr2?"Phase 4 — Aspects commerciaux":"Phase 4 — Commercial Readiness",keys:["Q35","Q36","Q37","Q38","Q39","Q40","Q41","Q42","Q43"]}
+    ];
+    let rows="";
+    phaseBlocks.forEach(block=>{
+      rows+=`<div style="padding:20px 40px 0"><div style="font-size:10px;font-family:monospace;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#94a3b8;padding-bottom:10px;border-bottom:2px solid #E2E8F0;margin-bottom:4px">${block.label}</div>`;
+      block.keys.forEach(k=>{
+        const ans=answered[k];
+        if(!ans) return;
+        rows+=`<div style="border-bottom:1px solid #F1EDE6;padding:14px 0"><div style="font-size:10px;font-family:monospace;font-weight:700;color:#94a3b8;margin-bottom:4px">${k}</div><div style="font-size:13px;font-weight:600;color:#1C2B3A;margin-bottom:6px">${(qLabels[k]||k)}</div><div style="font-size:13px;color:#475569;padding:8px 12px;background:#F8F6F2;border-left:3px solid #B7620A;border-radius:0 4px 4px 0">${ans.replace(/</g,"&lt;")}</div></div>`;
+      });
+      rows+="</div>";
+    });
+    const qaHTML=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ERSA Q&A Record — ${(report.businessName||"").replace(/</g,"&lt;")}</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Georgia,serif;background:#F8F6F2;color:#1C2B3A}-webkit-print-color-adjust:exact;print-color-adjust:exact}@media print{body{background:white}@page{margin:10mm;size:A4}}</style></head><body>
+    <div style="max-width:780px;margin:0 auto;background:white;box-shadow:0 4px 40px rgba(0,0,0,0.1)">
+      <div style="background:linear-gradient(135deg,#0D2B45,#1A3C5E);padding:36px 40px 32px">
+        <div style="font-size:10px;letter-spacing:0.22em;color:#90CAF9;font-family:monospace;text-transform:uppercase;margin-bottom:10px">PASSAGE EXPORT GROUP — ${isFr2?"RELEVÉ COMPLET DES RÉPONSES":"FULL ASSESSMENT RECORD"}</div>
+        <div style="font-size:26px;font-weight:900;color:white;margin-bottom:4px">${(report.businessName||"").replace(/</g,"&lt;")}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55)">${(report.producerName||"").replace(/</g,"&lt;")} · ${(report.productRange||"").replace(/</g,"&lt;")}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px;font-family:monospace">${(report.targetMarkets||[]).join(" · ")} · ${isFr2?"Évaluation complétée le":"Assessment completed"} ${today2}</div>
+      </div>
+      <div style="background:#F0EDE6;border-bottom:2px solid #E2DDD6;padding:16px 40px">
+        <p style="font-size:13px;color:#64748b;line-height:1.6">${isFr2?"Ce document contient chaque question posée et votre réponse. Il ne contient pas les scores ni l'analyse des écarts — ceux-ci figurent dans le rapport ERSA.":"This document contains every question asked and your response. It does not contain scores or gap analysis — those are in the ERSA Report."}</p>
+      </div>
+      ${rows}
+      <div style="background:#F8F6F2;border-top:1px solid #E2E8F0;padding:20px 40px;margin-top:16px;text-align:center">
+        <p style="font-size:11px;color:#94a3b8;line-height:1.7;font-family:monospace">PASSAGE EXPORT GROUP · passageexport.com · Mauritius<br>${isFr2?"Relevé généré le":"Record generated"} ${today2} · ${isFr2?"Les réponses sont déclarées par le producteur":"Responses are self-reported by the producer"}</p>
+      </div>
+    </div></body></html>`;
+    const win=window.open("","_blank");
+    if(win){win.document.write(qaHTML);win.document.close();setTimeout(()=>win.print(),400);}
   }
 
   return (
