@@ -371,38 +371,75 @@ export default function ERSA() {
     return parts.map(p=>`<p style="margin:0 0 10px 0">${esc(p)}</p>`).join("");
   }
 
+  // ── Build synthesis digest (used at Q43 to reduce token payload) ──────────
+  function buildSynthesisDigest() {
+    // Extract all user answers in Q-sequence order
+    // Produces a compact text digest: ~1,500 tokens vs ~6,000 for full history
+    const userMsgs = messagesRef.current.filter(m => m.role === "user");
+    // First message is the producer intro — keep it
+    const intro = userMsgs[0]?.content || "";
+    // Remaining messages are answers, one per question
+    const answers = userMsgs.slice(1).map((m, i) => {
+      const qKey = Q_SEQUENCE[i] || `Q${String(i).padStart(2,"0")}`;
+      return `${qKey}: ${m.content.split("\n")[0].trim()}`;
+    });
+    const digest = `Producer intro: ${intro}\n\nAssessment answers (complete):\n${answers.join("\n")}`;
+    return digest;
+  }
+
   // ── API call ────────────────────────────────────────────────────────────────
   async function callAPI() {
     try {
       abortControllerRef.current = new AbortController();
+
+      // Determine if this is the synthesis call
+      // Q43 is the last question (index 44 in Q_SEQUENCE).
+      // When user answers Q43, currentQIndexRef is still at 44 (not yet advanced).
+      // The last AI message's questionKey will be "Q43".
+      // We detect synthesis by checking: currentQIndex is at Q43 AND user has answered it
+      // (i.e. there are more user messages than AI messages, meaning AI asked Q43, user answered).
+      const aiMsgs = messagesRef.current.filter(m => m.role === "assistant");
+      const lastAIMsg = aiMsgs[aiMsgs.length - 1];
+      const lastAIQKey = lastAIMsg?.questionKey || null;
+      const isSynthesisCall = lastAIQKey === "Q43";
+
+      let messagesToSend;
+      if(isSynthesisCall) {
+        // SYNTHESIS MODE: send compact digest instead of full history
+        // Cuts payload from ~6,000 tokens to ~1,500 tokens
+        // This is the primary fix for 429s on the final report generation call
+        const digest = buildSynthesisDigest();
+        messagesToSend = [
+          {
+            role: "user",
+            content: digest + "\n\nAll 45 questions have been answered. Please now generate the complete ERSA report JSON. Output only ERSA_REPORT_JSON: followed immediately by the complete JSON object. No other text."
+          }
+        ];
+      } else {
+        // NORMAL MODE: condense AI messages to 150 chars, keep user answers in full
+        const all = messagesRef.current.map(m => ({role: m.role, content: m.content}));
+        if(all.length <= 4) {
+          messagesToSend = all;
+        } else {
+          const opening = all[0];
+          const condensed = [];
+          for(let i = 1; i < all.length; i++) {
+            const m = all[i];
+            if(m.role === "user") {
+              condensed.push(m);
+            } else {
+              const short = m.content.length > 150 ? m.content.slice(0, 150).trim() + "…" : m.content;
+              condensed.push({role: "assistant", content: short});
+            }
+          }
+          messagesToSend = [opening, ...condensed];
+        }
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({
-          // Structural 429 fix: condense AI messages on every call
-          // AI question text is verbose — acknowledgements + questions can be 200-400 chars each
-          // User answers are short — 20-60 chars each
-          // Condensing AI messages to 150 chars preserves full scoring context
-          // while cutting total token payload by ~55% across the entire assessment
-          messages: (() => {
-            const all = messagesRef.current.map(m=>({role:m.role,content:m.content}));
-            if(all.length <= 4) return all; // Don't condense early exchanges
-            const opening = all[0]; // Always keep full opening (producer intro)
-            const condensed = [];
-            for(let i=1; i<all.length; i++){
-              const m = all[i];
-              if(m.role==="user"){
-                condensed.push(m); // User answers always kept in full
-              } else {
-                // AI messages: keep first 150 chars — enough for question context
-                // The system prompt carries all question definitions anyway
-                const short = m.content.length > 150 ? m.content.slice(0,150).trim()+"…" : m.content;
-                condensed.push({role:"assistant", content:short});
-              }
-            }
-            return [opening, ...condensed];
-          })()
-        }),
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({messages: messagesToSend}),
         signal: abortControllerRef.current.signal
       });
       if(!res.ok) throw new Error(res.status);
@@ -417,25 +454,22 @@ export default function ERSA() {
         const errCode = "ERR-" + Date.now().toString(36).toUpperCase().slice(-6);
         const isFrNow = fr();
         if(reportAttemptsRef.current >= 2){
-          // Second failure — show error code and contact instructions
           const finalErrMsg = isFrNow
             ? "L'évaluation est complète mais le rapport n'a pas pu être généré après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran de ce message.\n\nCode de référence : " + errCode
             : "The assessment is complete but the report could not be generated after two attempts. Please contact info@passageexport.com and attach a screenshot of this message.\n\nReference code: " + errCode;
           setChatItems(prev => [...prev, {type:"ai", text:finalErrMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
         } else {
-          // First failure — offer retry
           const retryMsg = isFrNow
             ? "L'évaluation est complète mais une erreur technique a empêché la génération du rapport."
             : "The assessment is complete but a technical error prevented the report from generating.";
-          setChatItems(prev => [...prev, {type:"retryPrompt", text:retryMsg, id:Date.now()+Math.random()}]);
+          setChatItems(prev => [...prev, {type:"retryPrompt", text:retryMsg, isReportError:true, id:Date.now()+Math.random()}]);
         }
         return;
       }
       if(reportData){
         setLoading(false);
         loadingRef.current = false;
-        reportAttemptsRef.current = 0; // Reset counter on any successful response
-        // Show holding message before switching screen
+        reportAttemptsRef.current = 0;
         const preparingMsg = fr()
           ? "Votre évaluation est maintenant terminée. Je compile votre rapport — cela peut prendre jusqu'à deux minutes. Veuillez ne pas fermer cet onglet."
           : "Your assessment is now complete. I'm compiling your Export Readiness Report — this may take up to two minutes. Please do not close this tab.";
@@ -443,10 +477,9 @@ export default function ERSA() {
         setTimeout(() => {
           setReport(reportData);
           setTimeout(() => setScreen("report"), 100);
-          // Anonymous ping to Passage — no personal data
           fetch("/api/notify", {
             method: "POST",
-            headers: {"Content-Type":"application/json"},
+            headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
               band: reportData.band || "",
               score: reportData.totalScore || 0,
@@ -454,15 +487,14 @@ export default function ERSA() {
               language: reportData.language || "EN",
               timestamp: new Date().toISOString()
             })
-          }).catch(()=>{});
+          }).catch(() => {});
         }, 2200);
         return;
       }
       const replyLower = reply.toLowerCase();
-      const isGateFail = (replyLower.includes("not eligible")||replyLower.includes("non éligible")||replyLower.includes("pas éligible")) && currentQIndexRef.current<=1;
+      const isGateFail = (replyLower.includes("not eligible") || replyLower.includes("non éligible") || replyLower.includes("pas éligible")) && currentQIndexRef.current <= 1;
       const tagFromAI = detectQ(reply);
-      // Permanently enforce: if last user answer was Unsure, never advance — works for any number of Unsure presses
-      const lastUserMsg = messagesRef.current.filter(m=>m.role==="user").slice(-1)[0]?.content||"";
+      const lastUserMsg = messagesRef.current.filter(m => m.role === "user").slice(-1)[0]?.content || "";
       const lastAnswerLine = lastUserMsg.split("\n")[0].trim();
       const isUnsureAnswer = NO_ADVANCE_OPTIONS.has(lastAnswerLine);
       let qKey;
@@ -475,35 +507,31 @@ export default function ERSA() {
         qKey = advanceQuestion(tagFromAI);
       }
       const clean = cleanMsg(reply);
-      messagesRef.current = [...messagesRef.current, {role:"assistant",content:clean,questionKey:qKey}];
+      messagesRef.current = [...messagesRef.current, {role:"assistant", content:clean, questionKey:qKey}];
       setMessages([...messagesRef.current]);
       setLoading(false);
       loadingRef.current = false;
-      reportAttemptsRef.current = 0; // Reset on any successful response
+      reportAttemptsRef.current = 0;
       updatePhases(clean);
       updateProgress(qKey);
-      // Add AI message to chat items
-      setChatItems(prev => [...prev, {type:"ai", text:clean, qKey, isGateFail, id: Date.now()+Math.random()}]);
+      setChatItems(prev => [...prev, {type:"ai", text:clean, qKey, isGateFail, id:Date.now()+Math.random()}]);
       scrollToBottom(300);
     } catch(e) {
-      if(e.name==="AbortError") return; // Intentional abort from restart — do nothing
+      if(e.name === "AbortError") return;
       setLoading(false);
       loadingRef.current = false;
-      // Offer retry button on ALL connection errors — preserves answers already given
       reportAttemptsRef.current += 1;
       const errCode = "ERR-" + Date.now().toString(36).toUpperCase().slice(-6);
       if(reportAttemptsRef.current >= 2){
-        // Second consecutive failure — show error code and contact instructions
         const finalErrMsg = fr()
           ? "La connexion a échoué après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran de ce message.\n\nCode de référence : " + errCode
           : "The connection failed after two attempts. Please contact info@passageexport.com and attach a screenshot of this message.\n\nReference code: " + errCode;
         setChatItems(prev => [...prev, {type:"ai", text:finalErrMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
       } else {
-        // First failure — offer retry button, preserve all answers
         const retryMsg = fr()
           ? "Une erreur de connexion s'est produite. Vos réponses sont préservées."
           : "A connection error occurred. Your answers have been preserved.";
-        setChatItems(prev => [...prev, {type:"retryPrompt", text:retryMsg, id:Date.now()+Math.random()}]);
+        setChatItems(prev => [...prev, {type:"retryPrompt", text:retryMsg, isReportError:false, id:Date.now()+Math.random()}]);
       }
       scrollToBottom();
     }
@@ -567,13 +595,13 @@ export default function ERSA() {
   }
 
   // ── Restart ─────────────────────────────────────────────────────────────────
-  async function retryReport() {
+  async function retryReport(isReportError=true) {
     // Called from retry button — does NOT add any message to history
     // Just re-calls the API with existing history so AI re-synthesises
     if(loadingRef.current) return;
-    const retryingMsg = fr()
-      ? "Je réessaie de générer votre rapport. Veuillez patienter..."
-      : "Retrying report generation. Please wait...";
+    const retryingMsg = isReportError
+      ? (fr() ? "Je réessaie de générer votre rapport. Veuillez patienter..." : "Retrying report generation. Please wait...")
+      : (fr() ? "Je réessaie la connexion. Vos réponses sont préservées..." : "Retrying connection. Your answers have been preserved...");
     setChatItems(prev => [...prev, {type:"ai", text:retryingMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
     setLoading(true);
     loadingRef.current = true;
@@ -718,8 +746,10 @@ function ChatItem({item, lang, onSend, onRetry, loadingRef, pendingNoAdvanceRef}
       <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"20px 24px"}}>
         <div style={{fontSize:14,color:"rgba(255,255,255,0.85)",lineHeight:1.7,marginBottom:16}}>{item.text}</div>
         <button className="ans-btn" style={{textAlign:"center",padding:"12px 16px",width:"100%"}}
-          onClick={()=>{ onRetry(); }}>
-          {isFr?"↺ Réessayer de générer le rapport":"↺ Retry report generation"}
+          onClick={()=>{ onRetry(item.isReportError); }}>
+          {item.isReportError
+            ? (isFr?"↺ Réessayer de générer le rapport":"↺ Retry report generation")
+            : (isFr?"↺ Réessayer la connexion":"↺ Retry connection")}
         </button>
       </div>
     </div>
