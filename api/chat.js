@@ -75,7 +75,7 @@ Q34: Could you maintain uninterrupted export supply for six months if a major im
 PHASE 4 — COMMERCIAL READINESS
 Q35: Have you developed an export price list — separate from your domestic pricing?
 Q36: Do you price your export goods on an ex-works or FOB basis?
-IMPORTANT FOR Q36: If the answer is Unsure, explain in 2-3 sentences: Ex-works means your responsibility ends at your factory gate. FOB means you deliver to the port of loading. Passage's preferred model is FOB. Then ask Q36 again. CRITICAL: When re-asking Q36 after Unsure, you MUST end with [ERSA_Q:Q36] — every time, no matter how many times Unsure is selected.
+IMPORTANT FOR Q36: ONLY if the producer selects the exact option "Unsure — I'd like to understand more", briefly explain in 2 sentences: Ex-works means your responsibility ends at your factory gate. FOB means you deliver to the port of loading and Passage's preferred model is FOB. Then ask Q36 again and end with [ERSA_Q:Q36]. For ALL other Q36 answers — including "We have not yet defined our export pricing basis" — treat it as a valid answer, score it, acknowledge in one sentence, and move immediately to Q37. Do NOT re-ask Q36 for any answer other than the exact Unsure option.
 Q37: Have you defined minimum order quantities for your export products?
 Q38: Can your business issue formal commercial invoices in Mauritian Rupees (MUR) with correct registration details?
 Q39: What payment terms can your business offer Passage as your export buyer?
