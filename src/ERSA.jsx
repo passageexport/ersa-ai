@@ -280,6 +280,7 @@ export default function ERSA() {
   const currentQIndexRef = useRef(-1);
   const pendingNoAdvanceRef = useRef(false);
   const abortControllerRef = useRef(null); // Abort in-flight API calls on restart
+  const reportAttemptsRef = useRef(0); // Track retry attempts for final report
   const storageClassRef = useRef(null);
   const messagesRef = useRef([]);
   const loadingRef = useRef(false);
@@ -389,22 +390,35 @@ export default function ERSA() {
       const reply = data.content?.[0]?.text || "";
       const reportData = parseReport(reply);
       if(reportData && reportData._parseError){
-        // JSON detected but malformed/truncated — show graceful error, stop assessment
+        // JSON detected but malformed — offer retry
         setLoading(false);
         loadingRef.current = false;
-        const errMsg = fr()
-          ? "Votre évaluation est terminée mais une erreur technique empêche l'affichage du rapport. Veuillez contacter info@passageexport.com en mentionnant votre nom et votre entreprise."
-          : "Your assessment is complete but a technical error prevented the report from loading. Please contact info@passageexport.com with your name and business name.";
-        setChatItems(prev => [...prev, {type:"ai", text:errMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
+        reportAttemptsRef.current += 1;
+        const errCode = "ERR-" + Date.now().toString(36).toUpperCase().slice(-6);
+        const isFrNow = fr();
+        if(reportAttemptsRef.current >= 2){
+          // Second failure — show error code and contact instructions
+          const finalErrMsg = isFrNow
+            ? \`L'évaluation est complète mais le rapport n'a pas pu être généré après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran de ce message.\n\nCode de référence : \${errCode}\`
+            : \`The assessment is complete but the report could not be generated after two attempts. Please contact info@passageexport.com and attach a screenshot of this message.\n\nReference code: \${errCode}\`;
+          setChatItems(prev => [...prev, {type:"ai", text:finalErrMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
+        } else {
+          // First failure — offer retry
+          const retryMsg = isFrNow
+            ? "L'évaluation est complète mais une erreur technique a empêché la génération du rapport. Tapez **retry** ci-dessous pour réessayer."
+            : "The assessment is complete but a technical error prevented the report from generating. Type **retry** below to try again.";
+          setChatItems(prev => [...prev, {type:"ai", text:retryMsg, qKey:"RETRY", isGateFail:false, id:Date.now()+Math.random()}]);
+        }
         return;
       }
       if(reportData){
         setLoading(false);
         loadingRef.current = false;
-        // Show "preparing report" holding message before switching screen
+        reportAttemptsRef.current = 0; // Reset on success
+        // Show holding message before switching screen
         const preparingMsg = fr()
-          ? "C'est la fin de l'évaluation. Merci pour vos réponses. Veuillez patienter pendant que je prépare votre rapport de préparation à l'export — cela prendra quelques instants."
-          : "That's the end of the assessment. Thank you for your responses. Please wait while I prepare your Export Readiness Report — this will take just a moment.";
+          ? "Votre évaluation est maintenant terminée. Je compile votre rapport — cela peut prendre jusqu'à deux minutes. Veuillez ne pas fermer cet onglet."
+          : "Your assessment is now complete. I'm compiling your Export Readiness Report — this may take up to two minutes. Please do not close this tab.";
         setChatItems(prev => [...prev, {type:"ai", text:preparingMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
         setTimeout(() => {
           setReport(reportData);
@@ -420,7 +434,7 @@ export default function ERSA() {
               language: reportData.language || "EN",
               timestamp: new Date().toISOString()
             })
-          }).catch(()=>{}); // Silently ignore — never block report rendering
+          }).catch(()=>{});
         }, 2200);
         return;
       }
@@ -454,7 +468,25 @@ export default function ERSA() {
       if(e.name==="AbortError") return; // Intentional abort from restart — do nothing
       setLoading(false);
       loadingRef.current = false;
-      setChatItems(prev => [...prev, {type:"error", text: fr()?"Erreur de connexion. Veuillez réessayer.":"Connection error. Please try again.", id:Date.now()}]);
+      // Check if we were on the final question — if so, offer retry rather than generic error
+      const wasOnFinalQ = currentQIndexRef.current >= Q_SEQUENCE.length - 1;
+      if(wasOnFinalQ){
+        reportAttemptsRef.current += 1;
+        const errCode = "ERR-" + Date.now().toString(36).toUpperCase().slice(-6);
+        if(reportAttemptsRef.current >= 2){
+          const finalErrMsg = fr()
+            ? \`Le rapport n'a pas pu être généré après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran.\n\nCode de référence : \${errCode}\`
+            : \`The report could not be generated after two attempts. Please contact info@passageexport.com and attach a screenshot.\n\nReference code: \${errCode}\`;
+          setChatItems(prev => [...prev, {type:"ai", text:finalErrMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
+        } else {
+          const retryMsg = fr()
+            ? "Une erreur de connexion s'est produite lors de la génération du rapport. Tapez **retry** ci-dessous pour réessayer."
+            : "A connection error occurred while generating the report. Type **retry** below to try again.";
+          setChatItems(prev => [...prev, {type:"ai", text:retryMsg, qKey:"RETRY", isGateFail:false, id:Date.now()+Math.random()}]);
+        }
+      } else {
+        setChatItems(prev => [...prev, {type:"error", text: fr()?"Erreur de connexion. Veuillez réessayer.":"Connection error. Please try again.", id:Date.now()}]);
+      }
       scrollToBottom();
     }
   }
@@ -462,6 +494,19 @@ export default function ERSA() {
   // ── Send message ────────────────────────────────────────────────────────────
   async function sendMessage(text) {
     if(!text.trim() || loadingRef.current) return;
+    // Handle retry command after report failure
+    if(text.trim().toLowerCase()==="retry" || text.trim().toLowerCase()==="réessayer"){
+      setChatItems(prev => [...prev, {type:"user", text:text.trim(), id:Date.now()+Math.random()}]);
+      const retryingMsg = fr()
+        ? "Je réessaie de générer votre rapport. Veuillez patienter..."
+        : "Retrying report generation. Please wait...";
+      setChatItems(prev => [...prev, {type:"ai", text:retryingMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
+      setLoading(true);
+      loadingRef.current = true;
+      scrollToBottom(300);
+      await callAPI();
+      return;
+    }
     // Detect storage classification from Q08
     // Coffee break interstitial — inject after Q23 answer, before sending to API
     if(Q_SEQUENCE[currentQIndexRef.current]==="Q23"){
@@ -520,6 +565,7 @@ export default function ERSA() {
   function restart() {
     // Abort any in-flight API call so it cannot corrupt reset state
     if(abortControllerRef.current) abortControllerRef.current.abort();
+    reportAttemptsRef.current = 0;
     currentQIndexRef.current = -1;
     pendingNoAdvanceRef.current = false;
     storageClassRef.current = null;
