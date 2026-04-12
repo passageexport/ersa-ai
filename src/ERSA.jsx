@@ -87,8 +87,7 @@ h1{font-size:28px;font-weight:900;margin-bottom:16px;line-height:1.2}
 const COLD_CHAIN_KEYS = new Set(["Q28","Q29","Q30"]);
 const MULTI_SELECT = new Set(["Q27"]);
 const NO_ADVANCE_OPTIONS = new Set(["Unsure — I'd like to understand more","Je ne suis pas sûr(e) — j'aimerais en savoir plus"]);
-const TELL_US_MORE = new Set(["GATE1","GATE2","Q02","Q03","Q04","Q05","Q06","Q10","Q11","Q12","Q13","Q14","Q16","Q17","Q21","Q22","Q23","Q24","Q25","Q26","Q27","Q28","Q29","Q30","Q31","Q32","Q33","Q34","Q35","Q37","Q38","Q39","Q40","Q41","Q42","Q43"]);
-const AUTO_CTX = new Set(["I have more than one product and shelf life varies across my range","J'ai plusieurs produits et la durée de conservation varie selon chaque produit"]);
+// Context box removed — assessment is first-pass only, auto-submits on every button click
 const REFS = {
   Q16:{title:"Allergen declaration requirements",desc:"The full list of declarable allergens differs by market. Check the guide before answering."},
   Q17:{title:"Nutrition panel format by market",desc:"Each target market requires a different nutrition panel format."},
@@ -380,8 +379,29 @@ export default function ERSA() {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
-          // Send full message history — vercel.json now enforces 120s timeout properly
-          messages: messagesRef.current.map(m=>({role:m.role,content:m.content}))
+          // Smart trimming: full history mid-assessment, condensed for final synthesis
+          // At Q43 (final question), the AI response needs up to 4000 tokens for JSON
+          // Sending full verbose history pushes us into 429 rate limit territory
+          // Solution: for the final call, send only user answers (not AI question text)
+          // This preserves all scoring context while cutting token count by ~60%
+          messages: (() => {
+            const all = messagesRef.current.map(m=>({role:m.role,content:m.content}));
+            const isLastQuestion = currentQIndexRef.current >= Q_SEQUENCE.length - 1;
+            if(!isLastQuestion || all.length <= 10) return all;
+            // Final synthesis: keep opening message + strip AI verbosity, keep user answers
+            const opening = all[0];
+            const condensed = [];
+            for(let i=1; i<all.length; i++){
+              const m = all[i];
+              if(m.role==="user") condensed.push(m);
+              else {
+                // Keep AI messages but strip to just the question — first 120 chars
+                const short = m.content.slice(0,120).trim();
+                condensed.push({role:"assistant", content:short});
+              }
+            }
+            return [opening, ...condensed];
+          })()
         }),
         signal: abortControllerRef.current.signal
       });
@@ -405,9 +425,9 @@ export default function ERSA() {
         } else {
           // First failure — offer retry
           const retryMsg = isFrNow
-            ? "L'évaluation est complète mais une erreur technique a empêché la génération du rapport. Tapez **retry** ci-dessous pour réessayer."
-            : "The assessment is complete but a technical error prevented the report from generating. Type **retry** below to try again.";
-          setChatItems(prev => [...prev, {type:"ai", text:retryMsg, qKey:"RETRY", isGateFail:false, id:Date.now()+Math.random()}]);
+            ? "L'évaluation est complète mais une erreur technique a empêché la génération du rapport."
+            : "The assessment is complete but a technical error prevented the report from generating.";
+          setChatItems(prev => [...prev, {type:"retryPrompt", text:retryMsg, id:Date.now()+Math.random()}]);
         }
         return;
       }
@@ -480,9 +500,9 @@ export default function ERSA() {
           setChatItems(prev => [...prev, {type:"ai", text:finalErrMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
         } else {
           const retryMsg = fr()
-            ? "Une erreur de connexion s'est produite lors de la génération du rapport. Tapez **retry** ci-dessous pour réessayer."
-            : "A connection error occurred while generating the report. Type **retry** below to try again.";
-          setChatItems(prev => [...prev, {type:"ai", text:retryMsg, qKey:"RETRY", isGateFail:false, id:Date.now()+Math.random()}]);
+            ? "Une erreur de connexion s'est produite lors de la génération du rapport."
+            : "A connection error occurred while generating the report.";
+          setChatItems(prev => [...prev, {type:"retryPrompt", text:retryMsg, id:Date.now()+Math.random()}]);
         }
       } else {
         setChatItems(prev => [...prev, {type:"error", text: fr()?"Erreur de connexion. Veuillez réessayer.":"Connection error. Please try again.", id:Date.now()}]);
@@ -494,19 +514,6 @@ export default function ERSA() {
   // ── Send message ────────────────────────────────────────────────────────────
   async function sendMessage(text) {
     if(!text.trim() || loadingRef.current) return;
-    // Handle retry command after report failure
-    if(text.trim().toLowerCase()==="retry" || text.trim().toLowerCase()==="réessayer"){
-      setChatItems(prev => [...prev, {type:"user", text:text.trim(), id:Date.now()+Math.random()}]);
-      const retryingMsg = fr()
-        ? "Je réessaie de générer votre rapport. Veuillez patienter..."
-        : "Retrying report generation. Please wait...";
-      setChatItems(prev => [...prev, {type:"ai", text:retryingMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
-      setLoading(true);
-      loadingRef.current = true;
-      scrollToBottom(300);
-      await callAPI();
-      return;
-    }
     // Detect storage classification from Q08
     // Coffee break interstitial — inject after Q23 answer, before sending to API
     if(Q_SEQUENCE[currentQIndexRef.current]==="Q23"){
@@ -562,6 +569,20 @@ export default function ERSA() {
   }
 
   // ── Restart ─────────────────────────────────────────────────────────────────
+  async function retryReport() {
+    // Called from retry button — does NOT add any message to history
+    // Just re-calls the API with existing history so AI re-synthesises
+    if(loadingRef.current) return;
+    const retryingMsg = fr()
+      ? "Je réessaie de générer votre rapport. Veuillez patienter..."
+      : "Retrying report generation. Please wait...";
+    setChatItems(prev => [...prev, {type:"ai", text:retryingMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
+    setLoading(true);
+    loadingRef.current = true;
+    scrollToBottom(300);
+    await callAPI();
+  }
+
   function restart() {
     // Abort any in-flight API call so it cannot corrupt reset state
     if(abortControllerRef.current) abortControllerRef.current.abort();
@@ -654,7 +675,7 @@ export default function ERSA() {
       {/* Messages */}
       <div className="messages-area">
         <div className="msg-inner">
-          {chatItems.map(item => <ChatItem key={item.id} item={item} lang={langRef.current} onSend={sendMessage} loadingRef={loadingRef} pendingNoAdvanceRef={pendingNoAdvanceRef}/>)}
+          {chatItems.map(item => <ChatItem key={item.id} item={item} lang={langRef.current} onSend={sendMessage} onRetry={retryReport} loadingRef={loadingRef} pendingNoAdvanceRef={pendingNoAdvanceRef}/>)}
           {loading && (
             <div className="msg-row ai">
               <div className="ai-avatar">◈</div>
@@ -681,7 +702,7 @@ export default function ERSA() {
 }
 
 // ── ChatItem component ────────────────────────────────────────────────────────
-function ChatItem({item, lang, onSend, loadingRef, pendingNoAdvanceRef}){
+function ChatItem({item, lang, onSend, onRetry, loadingRef, pendingNoAdvanceRef}){
   const isFr = lang==="FR";
 
   if(item.type==="user") return (
@@ -692,6 +713,18 @@ function ChatItem({item, lang, onSend, loadingRef, pendingNoAdvanceRef}){
 
   if(item.type==="error") return (
     <div className="error-msg">⚠ {item.text}</div>
+  );
+
+  if(item.type==="retryPrompt") return (
+    <div style={{paddingLeft:38,marginBottom:16,marginTop:8,maxWidth:"calc(680px + 48px)",marginLeft:"auto",marginRight:"auto",width:"100%"}}>
+      <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"20px 24px"}}>
+        <div style={{fontSize:14,color:"rgba(255,255,255,0.85)",lineHeight:1.7,marginBottom:16}}>{item.text}</div>
+        <button className="ans-btn" style={{textAlign:"center",padding:"12px 16px",width:"100%"}}
+          onClick={()=>{ onRetry(); }}>
+          {isFr?"↺ Réessayer de générer le rapport":"↺ Retry report generation"}
+        </button>
+      </div>
+    </div>
   );
 
   if(item.type==="coffeebreak") return (
@@ -726,7 +759,9 @@ function ChatItem({item, lang, onSend, loadingRef, pendingNoAdvanceRef}){
 }
 
 function formatMsgText(rawText){
+  // Split on newlines first
   let parts = rawText.split(/\n+/).map(p=>p.trim()).filter(p=>p.length>0);
+  // If single paragraph containing a question, try to split at sentence boundary before the question
   if(parts.length===1 && parts[0].includes("?")){
     const text = parts[0];
     const lastQ = text.lastIndexOf("?");
@@ -742,8 +777,19 @@ function formatMsgText(rawText){
       if(before && after) parts=[before,after];
     }
   }
-  if(parts.length<=1) return `<p style="margin:0">${esc(rawText)}</p>`;
-  return parts.map(p=>`<p style="margin:0 0 10px 0">${esc(p)}</p>`).join("");
+  if(parts.length<=1){
+    // Single part — if it contains a question mark it's the question (bright), otherwise muted
+    const isQ = parts[0]?.includes("?");
+    const col = isQ ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)";
+    return `<p style="margin:0;color:${col}">${esc(rawText)}</p>`;
+  }
+  // Multiple parts: first part = acknowledgement (muted), remaining = question (bright)
+  return parts.map((p,i)=>{
+    const isLast = i===parts.length-1;
+    const col = i===0 ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.92)";
+    const mb = isLast ? "0" : "10px";
+    return `<p style="margin:0 0 ${mb} 0;color:${col}">${esc(p)}</p>`;
+  }).join("");
 }
 
 // ── AnswerBlock component ─────────────────────────────────────────────────────
@@ -753,37 +799,28 @@ function AnswerBlock({qKey, lang, onSend, loadingRef, pendingNoAdvanceRef}){
   const submittedRef = useRef(false); // Ref guard for sync double-click protection
   const [chosen, setChosen] = useState(null);
   const [chosenMulti, setChosenMulti] = useState(new Set());
-  const [showCtx, setShowCtx] = useState(false);
-  const [ctxVal, setCtxVal] = useState("");
   const isMulti = MULTI_SELECT.has(qKey);
   const opts = (isFr ? (OPTS_FR[qKey]||OPTS[qKey]) : OPTS[qKey]) || [];
   const rc = REFS[qKey];
-  const isAuto = chosen ? AUTO_CTX.has(chosen) : false;
-  const MAX_CTX_CHARS = 1000; // Cap free-text to prevent token explosion
 
-  function doSubmit(opt, ctx){
+
+  function doSubmit(opt){
     // Dual guard: ref (sync) + state (async) — prevents double-fire under any timing
     if(submittedRef.current || submitted) return;
     submittedRef.current = true;
     setSubmitted(true);
     if(NO_ADVANCE_OPTIONS.has(opt)) pendingNoAdvanceRef.current = true;
-    const safeCtx = ctx ? ctx.slice(0, MAX_CTX_CHARS) : "";
-    const msg = safeCtx ? `${opt}\n\n${isFr?"Contexte supplémentaire":"Additional context"}: ${safeCtx}` : opt;
-    onSend(msg);
+    onSend(opt);
   }
 
   function handleSingleClick(opt){
     if(submittedRef.current || submitted || loadingRef.current) return;
     if(chosen===opt){
       setChosen(null);
-      setShowCtx(false);
-      setCtxVal("");
       return;
     }
     setChosen(opt);
-    const needCtx = TELL_US_MORE.has(qKey)||AUTO_CTX.has(opt);
-    if(needCtx){ setShowCtx(true); }
-    else { doSubmit(opt,""); }
+    doSubmit(opt);
   }
 
   function handleMultiClick(opt){
@@ -804,7 +841,7 @@ function AnswerBlock({qKey, lang, onSend, loadingRef, pendingNoAdvanceRef}){
     // Dual guard on Confirm button too
     if(submittedRef.current || submitted || chosenMulti.size===0) return;
     const answer = (isFr?"Nous approvisionnons : ":"We supply: ")+[...chosenMulti].join(", ");
-    doSubmit(answer,"");
+    doSubmit(answer);
   }
 
   return (
@@ -839,19 +876,7 @@ function AnswerBlock({qKey, lang, onSend, loadingRef, pendingNoAdvanceRef}){
           {isFr?"Confirmer la sélection →":"Confirm selection →"}
         </button>
       )}
-      {showCtx && !submitted && (
-        <div className="ctx-box">
-          <div className="ctx-label">{isAuto?(isFr?"Veuillez décrire la durée de conservation de chaque produit":"Please describe the shelf life of each product"):(isFr?"Contexte supplémentaire (optionnel)":"Tell us more (optional)")}</div>
-          <textarea className="ctx-ta" rows={isAuto?3:2} placeholder={isAuto?(isFr?"Ex: Produit A = 12 mois…":"e.g. Product A = 12 months, Product B = 6 months…"):(isFr?"Ajoutez des détails utiles…":"Add any details that might be useful…")} value={ctxVal} onChange={e=>setCtxVal(e.target.value.slice(0,MAX_CTX_CHARS))} maxLength={MAX_CTX_CHARS} autoFocus/>
-          {ctxVal.length>800&&<div style={{fontSize:10,fontFamily:"monospace",color:"rgba(255,255,255,0.35)",textAlign:"right",marginTop:4}}>{ctxVal.length}/{MAX_CTX_CHARS}</div>}
-          <div className="ctx-actions">
 
-            <button className={`send-btn ${isAuto&&!ctxVal.trim()?"notready":"ready"}`} onClick={()=>{if(submittedRef.current||submitted)return;if(isAuto&&!ctxVal.trim())return;doSubmit(chosen,ctxVal.trim());}}>
-              {isFr?"Continuer →":"Continue →"}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
