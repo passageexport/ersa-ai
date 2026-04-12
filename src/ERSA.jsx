@@ -379,14 +379,8 @@ export default function ERSA() {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
-          // Keep first message (producer intro) + last 6 exchanges to control payload size
-          // The system prompt in chat.js carries all question context — full history not needed
-          // Aggressive trim needed: at Q45 the JSON synthesis response alone needs ~4000 tokens
-          messages: (() => {
-            const all = messagesRef.current.map(m=>({role:m.role,content:m.content}));
-            if(all.length <= 8) return all;
-            return [all[0], ...all.slice(-6)];
-          })()
+          // Send full message history — vercel.json now enforces 120s timeout properly
+          messages: messagesRef.current.map(m=>({role:m.role,content:m.content}))
         }),
         signal: abortControllerRef.current.signal
       });
