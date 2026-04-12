@@ -222,7 +222,7 @@ function detectQ(t){
   if(!all.length) return null;
   return all[all.length-1][1];
 }
-function cleanMsg(t){ const jsonIdx=t.indexOf("ERSA_REPORT_JSON:"); const jsonIdx2=t.indexOf("{"producerName""); const cutAt=jsonIdx>=0?jsonIdx:(jsonIdx2>=0?jsonIdx2:-1); const cleaned=cutAt>=0?t.slice(0,cutAt).trim():t; return cleaned.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").replace(/\*\*/g,"").replace(/\*/g,"").replace(/#{1,6}\s/g,"").trim(); }
+function cleanMsg(t){ const jsonIdx=t.indexOf('ERSA_REPORT_JSON:'); const jsonIdx2=t.indexOf('{"producerName"'); const cutAt=jsonIdx>=0?jsonIdx:(jsonIdx2>=0?jsonIdx2:-1); const cleaned=cutAt>=0?t.slice(0,cutAt).trim():t; return cleaned.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,6}\s/g,'').trim(); }
 function parseReport(t){
   if(!t) return null;
   const i=t.indexOf("ERSA_REPORT_JSON:");
@@ -241,7 +241,7 @@ function parseReport(t){
   }
   // Fallback: scan for a JSON blob containing producerName (handles missing marker)
   try{
-    const start=t.indexOf("{"producerName"");
+    const start=t.indexOf('{"producerName"');
     if(start>=0){
       const end=t.lastIndexOf("}");
       if(end>start){
