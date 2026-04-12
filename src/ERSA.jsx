@@ -416,19 +416,34 @@ export default function ERSA() {
           }
         ];
       } else {
-        // NORMAL MODE: condense AI messages to 150 chars, keep user answers in full
+        // NORMAL MODE: keep last 2 AI messages in full, condense older ones to 60 chars
+        // KEY FIX: The last AI message must always be full — it contains the question the
+        // producer just answered. Condensing it causes the AI to reference a truncated
+        // question in its next acknowledgement, producing "...quanti..." style artifacts.
+        // Older AI messages are condensed aggressively (60 chars) to cut token payload.
+        // User answers are ALWAYS kept in full — they carry all scoring data.
         const all = messagesRef.current.map(m => ({role: m.role, content: m.content}));
         if(all.length <= 4) {
           messagesToSend = all;
         } else {
-          const opening = all[0];
+          const opening = all[0]; // Producer intro — always full
+          // Find indices of AI messages to know which ones to keep full
+          const aiIndices = [];
+          for(let i = 1; i < all.length; i++){
+            if(all[i].role === "assistant") aiIndices.push(i);
+          }
+          // Keep the last 2 AI messages in full; condense everything earlier
+          const keepFullFrom = aiIndices.length >= 2 ? aiIndices[aiIndices.length - 2] : (aiIndices[0] ?? 1);
           const condensed = [];
-          for(let i = 1; i < all.length; i++) {
+          for(let i = 1; i < all.length; i++){
             const m = all[i];
-            if(m.role === "user") {
-              condensed.push(m);
+            if(m.role === "user"){
+              condensed.push(m); // User answers always full
+            } else if(i >= keepFullFrom){
+              condensed.push(m); // Last 2 AI messages always full
             } else {
-              const short = m.content.length > 150 ? m.content.slice(0, 150).trim() + "…" : m.content;
+              // Earlier AI messages: strip to 60 chars — enough for context, kills token bloat
+              const short = m.content.length > 60 ? m.content.slice(0, 60).trim() + "…" : m.content;
               condensed.push({role: "assistant", content: short});
             }
           }
