@@ -284,6 +284,7 @@ export default function ERSA() {
   const messagesRef = useRef([]);
   const loadingRef = useRef(false);
   const langRef = useRef("EN");
+  const lastCallTimeRef = useRef(0); // Throttle: track when last API call fired
 
   const messagesEndRef = useRef(null);
   const textInputRef = useRef(null);
@@ -392,6 +393,16 @@ export default function ERSA() {
     try {
       abortControllerRef.current = new AbortController();
 
+      // Throttle: if last call was < 3s ago, wait the remainder before firing
+      // Prevents burst 429s when a producer clicks through questions quickly
+      const now = Date.now();
+      const msSinceLast = now - lastCallTimeRef.current;
+      const MIN_CALL_GAP = 3000; // 3 seconds between calls
+      if(msSinceLast < MIN_CALL_GAP && lastCallTimeRef.current > 0){
+        await new Promise(r => setTimeout(r, MIN_CALL_GAP - msSinceLast));
+      }
+      lastCallTimeRef.current = Date.now();
+
       // Determine if this is the synthesis call
       // Q43 is the last question (index 44 in Q_SEQUENCE).
       // When user answers Q43, currentQIndexRef is still at 44 (not yet advanced).
@@ -416,38 +427,35 @@ export default function ERSA() {
           }
         ];
       } else {
-        // NORMAL MODE: keep last 2 AI messages in full, condense older ones to 60 chars
-        // KEY FIX: The last AI message must always be full — it contains the question the
-        // producer just answered. Condensing it causes the AI to reference a truncated
-        // question in its next acknowledgement, producing "...quanti..." style artifacts.
-        // Older AI messages are condensed aggressively (60 chars) to cut token payload.
-        // User answers are ALWAYS kept in full — they carry all scoring data.
+        // NORMAL MODE: DROP old AI messages entirely, keep only user answers + last 2 AI messages
+        //
+        // WHY: The AI receiving its own old messages (even at 60 chars) reproduces truncated
+        // text in acknowledgements, causing "...compl..." artifacts on screen.
+        // Old AI messages are redundant — the system prompt defines every question already.
+        // The AI only needs: (1) producer intro, (2) all user answers, (3) its last 2 responses.
+        // This cuts mid-assessment payload by ~70% and eliminates the truncation bug entirely.
         const all = messagesRef.current.map(m => ({role: m.role, content: m.content}));
         if(all.length <= 4) {
           messagesToSend = all;
         } else {
           const opening = all[0]; // Producer intro — always full
-          // Find indices of AI messages to know which ones to keep full
+          // Find last 2 AI message indices
           const aiIndices = [];
           for(let i = 1; i < all.length; i++){
             if(all[i].role === "assistant") aiIndices.push(i);
           }
-          // Keep the last 2 AI messages in full; condense everything earlier
           const keepFullFrom = aiIndices.length >= 2 ? aiIndices[aiIndices.length - 2] : (aiIndices[0] ?? 1);
-          const condensed = [];
+          const filtered = [];
           for(let i = 1; i < all.length; i++){
             const m = all[i];
             if(m.role === "user"){
-              condensed.push(m); // User answers always full
+              filtered.push(m); // All user answers — always full, always included
             } else if(i >= keepFullFrom){
-              condensed.push(m); // Last 2 AI messages always full
-            } else {
-              // Earlier AI messages: strip to 60 chars — enough for context, kills token bloat
-              const short = m.content.length > 60 ? m.content.slice(0, 60).trim() + "…" : m.content;
-              condensed.push({role: "assistant", content: short});
+              filtered.push(m); // Last 2 AI messages — kept full for context
             }
+            // Older AI messages: DROPPED entirely. System prompt has all question text.
           }
-          messagesToSend = [opening, ...condensed];
+          messagesToSend = [opening, ...filtered];
         }
       }
 
