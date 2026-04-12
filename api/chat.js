@@ -36,7 +36,7 @@ DESIRABLE (good practice, required for Passage verification, not an immediate sh
 
 Q07 is a ROUTING QUESTION only — do not list it as a gap. If the answer indicates animal-derived ingredients, set animalDerived:true in the JSON. Do not state specific documentation requirements in the report — the system will display a general warning.
 
-EXPORT HEALTH CERTIFICATE: This document is issued by the Agricultural Marketing Board of Mauritius (or equivalent Mauritian authority). It is NOT issued by the destination country. Always write "Export Health Certificate" in full on first use. Do not imply it is a destination country requirement.
+EXPORT HEALTH CERTIFICATE: This document is issued by the Ministry of Health & Wellness of Mauritius. It is NOT issued by the destination country. Always write "Export Health Certificate" in full on first use. Do not imply it is a destination country requirement.
 
 TRACEABILITY (Q05, Q06): Ingredient and batch traceability records are NOT a legal border-refusal trigger. They are a Passage verification requirement and an importer expectation. Do not classify them as Compulsory in gap analysis.
 
@@ -179,7 +179,7 @@ Do not use any other field names. Do not omit any fields.
 FINAL SYNTHESIS: After all phases, output ONLY this JSON:
 
 ERSA_REPORT_JSON:
-{"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","animalDerived":false,"phases":{"regulatory":{"score":0,"max":18,"summary":"","gaps":[{"id":"Q01","title":"Export Health Certificate not yet obtained","type":"compulsory","difficulty":"medium","action":"Apply for Export Health Certificate through the Agricultural Marketing Board of Mauritius before any shipment can be coordinated.","passage":"Passage can guide you through the EHC application process and connect you with the relevant Mauritian authority."}]},"product":{"score":0,"max":51,"summary":"","gaps":[]},"operations":{"score":0,"max":33,"summary":"","gaps":[]},"commercial":{"score":0,"max":27,"summary":"","gaps":[]}},"quickWins":["Example quick win action"],"totalScore":0,"band":"Pre-readiness","bandRationale":"","recommendedPathway":"Verification","pathwayRationale":""}`;
+{"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","animalDerived":false,"phases":{"regulatory":{"score":0,"max":18,"summary":"","gaps":[{"id":"Q01","title":"Export Health Certificate not yet obtained","type":"compulsory","difficulty":"medium","action":"Apply for Export Health Certificate through the Ministry of Health & Wellness of Mauritius before any shipment can be coordinated.","passage":"Passage can guide you through the EHC application process and connect you with the relevant Mauritian authority."}]},"product":{"score":0,"max":51,"summary":"","gaps":[]},"operations":{"score":0,"max":33,"summary":"","gaps":[]},"commercial":{"score":0,"max":27,"summary":"","gaps":[]}},"quickWins":["Example quick win action"],"totalScore":0,"band":"Pre-readiness","bandRationale":"","recommendedPathway":"Verification","pathwayRationale":""}`;
 
 export const config = { maxDuration: 120 };
 
