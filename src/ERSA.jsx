@@ -462,7 +462,7 @@ export default function ERSA() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({messages: messagesToSend}),
+        body: JSON.stringify({messages: messagesToSend, isSynthesis, language: langRef.current}),
         signal: abortControllerRef.current.signal
       });
       if(!res.ok) throw new Error(res.status);
