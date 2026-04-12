@@ -75,9 +75,11 @@ h1{font-size:28px;font-weight:900;margin-bottom:16px;line-height:1.2}
 .new-btn{background:rgba(13,43,69,.08);border:1px solid rgba(13,43,69,.15);color:rgba(13,43,69,.5);border-radius:8px;padding:10px 24px;font-size:13px;cursor:pointer;font-family:Georgia,serif;width:100%;text-align:center;display:block;margin-top:16px;margin-bottom:8px}
 @media print{
   .test-banner,.lang-screen,.intake-screen,.chat-screen,.new-btn{display:none!important}
-  .report-screen{display:flex!important;padding:0!important;background:white!important}
-  .report-wrap{max-width:100%!important}
-  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .report-screen{display:block!important;padding:0!important;background:white!important;min-height:auto!important}
+  .report-wrap{max-width:100%!important;width:100%!important}
+  .report-screen>div{overflow:visible!important;max-height:none!important;height:auto!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+  @page{margin:0;size:A4}
 }
 `;
 
@@ -225,7 +227,7 @@ INTAKE DATA: You will receive the producer's name, business name, product range,
 
 OPENING: Start immediately with Gate Question 1. Do not introduce yourself at length. One brief welcoming sentence maximum, then straight into the first question.
 
-ELIGIBILITY GATES: If the answer to Gate Q1 or Gate Q2 is No or Expired, immediately inform the producer they are Not Eligible. Your response MUST contain the exact phrase "Not Eligible" — this is used by the system to stop the assessment. Explain warmly why registration/licensing is a prerequisite, and tell them to please contact Passage directly on hello@passageexport.com. Do not ask any further questions. Do not append any [ERSA_Q] tag. End the conversation there.
+ELIGIBILITY GATES: If the answer to Gate Q1 or Gate Q2 is No or Expired, immediately inform the producer they are Not Eligible. Your response MUST contain the exact phrase "Not Eligible" — this is used by the system to stop the assessment. Explain warmly why registration/licensing is a prerequisite, and tell them to please contact Passage directly on info@passageexport.com. Do not ask any further questions. Do not append any [ERSA_Q] tag. End the conversation there.
 
 COMPULSORY vs DESIRABLE: When identifying gaps, classify each as follows.
 COMPULSORY (must be resolved before Passage can coordinate a shipment, or causes importer rejection): GATE1, GATE2, Q01, Q02, Q08, Q09, Q12, Q13, Q15, Q16, Q17, Q18, Q19, Q20, Q21, Q22, Q28 (frozen/chilled only), Q29 (frozen/chilled only), Q38, Q41, Q42.
@@ -376,7 +378,7 @@ function detectQ(t){
   return all[all.length-1][1];
 }
 function cleanMsg(t){ return t.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").replace(/\*\*/g,"").replace(/\*/g,"").replace(/#{1,6}\s/g,"").trim(); }
-function parseReport(t){ const i=t.indexOf("ERSA_REPORT_JSON:"); if(i<0)return null; try{ const after=t.slice(i+17).trim(); const start=after.indexOf("{"); const end=after.lastIndexOf("}"); if(start<0||end<0)return null; return JSON.parse(after.slice(start,end+1)); }catch(e){return null;} }
+function parseReport(t){ if(!t) return null; const i=t.indexOf("ERSA_REPORT_JSON:"); const j=t.indexOf("{"producerName""); const idx=i>=0?i:(j>=0?j-17:-1); if(idx<0&&j<0) return null; try{ const after=i>=0?t.slice(i+17).trim():t.slice(j).trim(); const start=after.indexOf("{"); const end=after.lastIndexOf("}"); if(start<0||end<0) return null; const parsed=JSON.parse(after.slice(start,end+1)); if(parsed&&parsed.producerName!==undefined) return parsed; return null; }catch(e){ return null; } }
 function qKeyToNum(qKey){
   if(!qKey) return null;
   if(qKey==="GATE1") return 1;
@@ -512,17 +514,28 @@ export default function ERSA() {
       if(reportData){
         setLoading(false);
         loadingRef.current = false;
-        setReport(reportData);
-        setScreen("report");
+        // Show "preparing report" holding message before switching screen
+        const preparingMsg = fr()
+          ? "C'est la fin de l'évaluation. Merci pour vos réponses. Veuillez patienter pendant que je prépare votre rapport de préparation à l'export — cela prendra quelques instants."
+          : "That's the end of the assessment. Thank you for your responses. Please wait while I prepare your Export Readiness Report — this will take just a moment.";
+        setChatItems(prev => [...prev, {type:"ai", text:preparingMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
+        setTimeout(() => {
+          setReport(reportData);
+          setScreen("report");
+        }, 2200);
         return;
       }
       const replyLower = reply.toLowerCase();
       const isGateFail = (replyLower.includes("not eligible")||replyLower.includes("non éligible")||replyLower.includes("pas éligible")) && currentQIndexRef.current<=1;
       const tagFromAI = detectQ(reply);
+      // Permanently enforce: if last user answer was Unsure, never advance — works for any number of Unsure presses
+      const lastUserMsg = messagesRef.current.filter(m=>m.role==="user").slice(-1)[0]?.content||"";
+      const lastAnswerLine = lastUserMsg.split("\n")[0].trim();
+      const isUnsureAnswer = NO_ADVANCE_OPTIONS.has(lastAnswerLine);
       let qKey;
       if(isGateFail){
         qKey = null;
-      } else if(pendingNoAdvanceRef.current){
+      } else if(isUnsureAnswer || pendingNoAdvanceRef.current){
         pendingNoAdvanceRef.current = false;
         qKey = Q_SEQUENCE[currentQIndexRef.current];
       } else {
@@ -550,6 +563,18 @@ export default function ERSA() {
   async function sendMessage(text) {
     if(!text.trim() || loadingRef.current) return;
     // Detect storage classification from Q08
+    // Coffee break interstitial — inject after Q23 answer, before sending to API
+    if(Q_SEQUENCE[currentQIndexRef.current]==="Q23"){
+      setChatItems(prev => [...prev, {type:"user", text, id:Date.now()+Math.random()}]);
+      setChatItems(prev => [...prev, {type:"coffeebreak", id:Date.now()+Math.random(), lang:langRef.current, onContinue:() => {
+        messagesRef.current = [...messagesRef.current, {role:"user",content:text}];
+        setMessages([...messagesRef.current]);
+        setLoading(true);
+        loadingRef.current = true;
+        callAPI();
+      }}]);
+      return;
+    }
     if(Q_SEQUENCE[currentQIndexRef.current]==="Q08"){
       const t = text.toLowerCase();
       if(t.includes("ambient")||t.includes("shelf-stable")||t.includes("shelf stable")) storageClassRef.current="ambient";
@@ -716,6 +741,10 @@ function ChatItem({item, lang, onSend, loadingRef, pendingNoAdvanceRef}){
     <div className="error-msg">⚠ {item.text}</div>
   );
 
+  if(item.type==="coffeebreak") return (
+    <CoffeeBreak lang={item.lang} onContinue={item.onContinue}/>
+  );
+
   if(item.type==="ai"){
     const {text, qKey, isGateFail} = item;
     const num = qKeyToNum(qKey);
@@ -867,6 +896,93 @@ function AnswerBlock({qKey, lang, onSend, loadingRef, pendingNoAdvanceRef}){
   );
 }
 
+// ── CoffeeBreak component ────────────────────────────────────────────────────
+function CoffeeBreak({lang, onContinue}){
+  const isFr = lang==="FR";
+  const [choice, setChoice] = useState(null); // null | "break" | "continue"
+  const [secondsLeft, setSecondsLeft] = useState(600); // 10 minutes
+  const [done, setDone] = useState(false);
+  const timerRef = useRef(null);
+
+  function takeBreak(){
+    setChoice("break");
+    timerRef.current = setInterval(()=>{
+      setSecondsLeft(s=>{
+        if(s<=1){
+          clearInterval(timerRef.current);
+          setDone(true);
+          return 0;
+        }
+        return s-1;
+      });
+    },1000);
+  }
+
+  function resume(){
+    if(timerRef.current) clearInterval(timerRef.current);
+    setChoice("continue");
+    onContinue();
+  }
+
+  useEffect(()=>()=>{ if(timerRef.current) clearInterval(timerRef.current); },[]);
+
+  const mins = Math.floor(secondsLeft/60);
+  const secs = secondsLeft%60;
+  const timeStr = `${mins}:${secs.toString().padStart(2,"0")}`;
+
+  if(choice==="continue") return null;
+
+  return (
+    <div style={{paddingLeft:38,marginBottom:16,marginTop:8,maxWidth:"calc(680px + 48px)",marginLeft:"auto",marginRight:"auto",width:"100%"}}>
+      <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"20px 24px"}}>
+        <div style={{fontSize:11,fontWeight:700,color:"#90CAF9",fontFamily:"monospace",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>
+          ◈ {isFr?"Mi-parcours — Question 23 sur 45":"Halfway there — Question 23 of 45"}
+        </div>
+        {!choice && (
+          <>
+            <p style={{fontSize:14,color:"rgba(255,255,255,0.85)",lineHeight:1.7,marginBottom:16}}>
+              {isFr
+                ?"Vous avez complété la moitié de l'évaluation. Souhaitez-vous faire une courte pause ? Je vous attendrai jusqu'à 10 minutes avant de continuer."
+                :"You've completed half the assessment. Would you like a short break? I can wait up to 10 minutes before we continue."}
+            </p>
+            <div style={{display:"flex",gap:10}}>
+              <button className="ans-btn" style={{flex:1,textAlign:"center",padding:"12px 16px"}} onClick={takeBreak}>
+                ☕ {isFr?"Oui, donnez-moi 10 minutes":"Yes, give me 10 minutes"}
+              </button>
+              <button className="ans-btn" style={{flex:1,textAlign:"center",padding:"12px 16px"}} onClick={resume}>
+                {isFr?"Non, continuons":"No — let's keep going"}
+              </button>
+            </div>
+          </>
+        )}
+        {choice==="break" && !done && (
+          <>
+            <p style={{fontSize:14,color:"rgba(255,255,255,0.85)",lineHeight:1.7,marginBottom:16}}>
+              {isFr?"Prenez votre temps. Je reprends dans :":"Take your time. Resuming in:"}
+            </p>
+            <div style={{fontSize:48,fontWeight:900,color:"#90CAF9",fontFamily:"monospace",marginBottom:16,letterSpacing:"0.05em"}}>
+              {timeStr}
+            </div>
+            <button className="ans-btn" style={{textAlign:"center",padding:"12px 16px"}} onClick={resume}>
+              {isFr?"Je suis prêt(e) — reprenons":"I'm ready — let's continue"}
+            </button>
+          </>
+        )}
+        {done && (
+          <>
+            <p style={{fontSize:14,color:"rgba(255,255,255,0.85)",lineHeight:1.7,marginBottom:16}}>
+              {isFr?"Bienvenue de retour. Continuons l'évaluation.":"Welcome back. Let's continue the assessment."}
+            </p>
+            <button className="ans-btn" style={{textAlign:"center",padding:"12px 16px"}} onClick={resume}>
+              {isFr?"Continuer →":"Continue →"}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── ReportScreen component ────────────────────────────────────────────────────
 function ReportScreen({report, lang, onRestart, messages}){
   const isFr = lang==="FR";
@@ -969,7 +1085,7 @@ function ReportScreen({report, lang, onRestart, messages}){
   return (
     <div className="report-screen">
       <div className="report-wrap">
-        <div style={{maxWidth:780,width:"100%",background:"white",borderRadius:0,overflow:"hidden",boxShadow:"0 4px 40px rgba(0,0,0,0.12)",wordWrap:"break-word",overflowWrap:"break-word",WebkitPrintColorAdjust:"exact",printColorAdjust:"exact"}}>
+        <div style={{maxWidth:780,width:"100%",background:"white",borderRadius:0,overflow:"visible",boxShadow:"0 4px 40px rgba(0,0,0,0.12)",wordWrap:"break-word",overflowWrap:"break-word",WebkitPrintColorAdjust:"exact",printColorAdjust:"exact"}}>
           {/* Header */}
           <div style={{background:"linear-gradient(135deg,#0D2B45,#1A3C5E)",padding:"36px 40px 32px"}}>
             <div style={{fontSize:10,letterSpacing:"0.22em",color:"#90CAF9",fontFamily:"monospace",textTransform:"uppercase",marginBottom:10}}>{isFr?"PASSAGE EXPORT GROUP — RAPPORT ERSA":"PASSAGE EXPORT GROUP — ERSA REPORT"}</div>
@@ -1052,10 +1168,10 @@ function ReportScreen({report, lang, onRestart, messages}){
               <div style={{width:32,height:32,borderRadius:"50%",background:"#0D2B45",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,fontFamily:"monospace",flexShrink:0,marginTop:2}}>2</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:15,fontWeight:700,color:"#0D2B45",marginBottom:6}}>{isFr?"Demandez un rappel à Passage":"Request a callback from Passage"}</div>
-                <div style={{fontSize:13,color:"#475569",lineHeight:1.65,marginBottom:12}}>{isFr?"Copiez le message ci-dessous et envoyez-le à hello@passageexport.com avec votre rapport en pièce jointe.":"Copy the message below and send it to hello@passageexport.com with your report attached."}</div>
+                <div style={{fontSize:13,color:"#475569",lineHeight:1.65,marginBottom:12}}>{isFr?"Copiez le message ci-dessous et envoyez-le à info@passageexport.com avec votre rapport en pièce jointe.":"Copy the message below and send it to info@passageexport.com with your report attached."}</div>
                 <div style={{background:"#F8F6F2",border:"1px solid #E2E8F0",borderRadius:8,padding:16}}>
                   <div style={{fontSize:10,fontFamily:"monospace",fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"#94a3b8",marginBottom:8}}>{isFr?"Copiez ce message :":"Copy this message:"}</div>
-                  <div style={{fontSize:12,fontFamily:"monospace",color:"#475569",marginBottom:8,padding:"6px 10px",background:"white",border:"1px solid #E2E8F0",borderRadius:4,whiteSpace:"pre"}}>To: hello@passageexport.com{"\n"}Subject: ERSA Report — {report.businessName||""} — Callback Request</div>
+                  <div style={{fontSize:12,fontFamily:"monospace",color:"#475569",marginBottom:8,padding:"6px 10px",background:"white",border:"1px solid #E2E8F0",borderRadius:4,whiteSpace:"pre"}}>To: info@passageexport.com{"\n"}Subject: ERSA Report — {report.businessName||""} — Callback Request</div>
                   <div id="ersa-email-body" style={{fontSize:12,color:"#334155",lineHeight:1.65,whiteSpace:"pre-wrap",padding:"10px 12px",background:"white",border:"1px solid #E2E8F0",borderRadius:4,marginBottom:10,fontFamily:"Georgia,serif"}}>{emailBody}</div>
                   <button onClick={copyEmail} style={{background:"#0D2B45",color:"white",border:"none",borderRadius:6,padding:"9px 18px",fontSize:12,fontWeight:700,fontFamily:"Georgia,serif",cursor:"pointer",width:"100%"}}>{isFr?"Copier le message":"Copy message to clipboard"}</button>
                   <div id="copy-confirm" style={{fontSize:11,fontFamily:"monospace",color:"#1A5C38",textAlign:"center",marginTop:6,display:"none"}}>✓ {isFr?"Copié — ouvrez votre messagerie, collez et envoyez":"Copied — open your email, paste and send"}</div>
