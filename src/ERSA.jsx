@@ -377,8 +377,8 @@ function detectQ(t){
   if(!all.length) return null;
   return all[all.length-1][1];
 }
-function cleanMsg(t){ return t.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").replace(/\*\*/g,"").replace(/\*/g,"").replace(/#{1,6}\s/g,"").trim(); }
-function parseReport(t){ if(!t) return null; const i=t.indexOf("ERSA_REPORT_JSON:"); if(i<0) return null; try{ const s=t.slice(i+17).trim(); const start=s.indexOf("{"); const end=s.lastIndexOf("}"); if(start<0||end<0) return null; const parsed=JSON.parse(s.slice(start,end+1)); if(parsed&&parsed.producerName!==undefined) return parsed; return null; }catch(e){ return null; } }
+function cleanMsg(t){ const jsonIdx=t.indexOf("ERSA_REPORT_JSON:"); const cleaned=jsonIdx>=0?t.slice(0,jsonIdx).trim():t; return cleaned.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").replace(/\*\*/g,"").replace(/\*/g,"").replace(/#{1,6}\s/g,"").trim(); }
+function parseReport(t){ if(!t) return null; const i=t.indexOf("ERSA_REPORT_JSON:"); if(i<0) return null; try{ const s=t.slice(i+17).trim(); const start=s.indexOf("{"); const end=s.lastIndexOf("}"); if(start<0||end<0) return {_parseError:true}; const parsed=JSON.parse(s.slice(start,end+1)); if(parsed&&parsed.totalScore!==undefined) return parsed; if(parsed&&parsed.producerName!==undefined) return parsed; return {_parseError:true}; }catch(e){ return {_parseError:true}; } }
 function qKeyToNum(qKey){
   if(!qKey) return null;
   if(qKey==="GATE1") return 1;
@@ -511,6 +511,16 @@ export default function ERSA() {
       const data = await res.json();
       const reply = data.content?.[0]?.text || "";
       const reportData = parseReport(reply);
+      if(reportData && reportData._parseError){
+        // JSON detected but malformed/truncated — show graceful error, stop assessment
+        setLoading(false);
+        loadingRef.current = false;
+        const errMsg = fr()
+          ? "Votre évaluation est terminée mais une erreur technique empêche l'affichage du rapport. Veuillez contacter info@passageexport.com en mentionnant votre nom et votre entreprise."
+          : "Your assessment is complete but a technical error prevented the report from loading. Please contact info@passageexport.com with your name and business name.";
+        setChatItems(prev => [...prev, {type:"ai", text:errMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
+        return;
+      }
       if(reportData){
         setLoading(false);
         loadingRef.current = false;
@@ -522,6 +532,18 @@ export default function ERSA() {
         setTimeout(() => {
           setReport(reportData);
           setScreen("report");
+          // Anonymous ping to Passage — no personal data
+          fetch("/api/notify", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+              band: reportData.band || "",
+              score: reportData.totalScore || 0,
+              markets: reportData.targetMarkets || [],
+              language: reportData.language || "EN",
+              timestamp: new Date().toISOString()
+            })
+          }).catch(()=>{}); // Silently ignore — never block report rendering
         }, 2200);
         return;
       }
@@ -573,6 +595,7 @@ export default function ERSA() {
         loadingRef.current = true;
         callAPI();
       }}]);
+      scrollToBottom(400);
       return;
     }
     if(Q_SEQUENCE[currentQIndexRef.current]==="Q08"){
@@ -612,6 +635,7 @@ export default function ERSA() {
     setLoading(true);
     loadingRef.current = true;
     await callAPI();
+    scrollToBottom(600);
   }
 
   // ── Restart ─────────────────────────────────────────────────────────────────
@@ -646,6 +670,9 @@ export default function ERSA() {
           <button className="btn-primary" onClick={()=>{langRef.current="EN";setLangState("EN");setScreen("intake");}}>English</button>
           <button className="btn-ghost" onClick={()=>{langRef.current="FR";setLangState("FR");setScreen("intake");}}>Français</button>
         </div>
+        <p style={{marginTop:24,fontSize:12,color:"rgba(255,255,255,0.3)",textAlign:"center",lineHeight:1.6,maxWidth:380,fontFamily:"monospace"}}>
+          For the best experience, we recommend completing this assessment on a laptop or desktop.
+        </p>
       </div>
     </div>
   );
@@ -936,7 +963,7 @@ function CoffeeBreak({lang, onContinue}){
     <div style={{paddingLeft:38,marginBottom:16,marginTop:8,maxWidth:"calc(680px + 48px)",marginLeft:"auto",marginRight:"auto",width:"100%"}}>
       <div style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.15)",borderRadius:12,padding:"20px 24px"}}>
         <div style={{fontSize:11,fontWeight:700,color:"#90CAF9",fontFamily:"monospace",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}}>
-          ◈ {isFr?"Mi-parcours — Question 23 sur 45":"Halfway there — Question 23 of 45"}
+          ◈ {isFr?"Mi-parcours — Question 25 sur 45":"Halfway there — Question 25 of 45"}
         </div>
         {!choice && (
           <>
@@ -1080,12 +1107,25 @@ function ReportScreen({report, lang, onRestart, messages}){
     });
   }
 
-  function printReport(){ window.print(); }
+  function printReport(){
+    const reportEl = document.getElementById('ersa-report-printable');
+    if(!reportEl) return;
+    const html = reportEl.innerHTML;
+    const win = window.open('','_blank');
+    if(!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>ERSA Report</title><style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Georgia,serif;background:white;color:#1C2B3A;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      @media print{@page{margin:10mm;size:A4}body{background:white}}
+    </style></head><body>${html}</body></html>`);
+    win.document.close();
+    setTimeout(()=>win.print(),400);
+  }
 
   return (
     <div className="report-screen">
       <div className="report-wrap">
-        <div style={{maxWidth:780,width:"100%",background:"white",borderRadius:0,overflow:"visible",boxShadow:"0 4px 40px rgba(0,0,0,0.12)",wordWrap:"break-word",overflowWrap:"break-word",WebkitPrintColorAdjust:"exact",printColorAdjust:"exact"}}>
+        <div id="ersa-report-printable" style={{maxWidth:780,width:"100%",background:"white",borderRadius:0,overflow:"visible",boxShadow:"0 4px 40px rgba(0,0,0,0.12)",wordWrap:"break-word",overflowWrap:"break-word",WebkitPrintColorAdjust:"exact",printColorAdjust:"exact"}}>
           {/* Header */}
           <div style={{background:"linear-gradient(135deg,#0D2B45,#1A3C5E)",padding:"36px 40px 32px"}}>
             <div style={{fontSize:10,letterSpacing:"0.22em",color:"#90CAF9",fontFamily:"monospace",textTransform:"uppercase",marginBottom:10}}>{isFr?"PASSAGE EXPORT GROUP — RAPPORT ERSA":"PASSAGE EXPORT GROUP — ERSA REPORT"}</div>
@@ -1151,30 +1191,44 @@ function ReportScreen({report, lang, onRestart, messages}){
             <div style={{fontSize:22,fontWeight:900,color:p.c,marginBottom:10}}>{p.d}</div>
             <p style={{fontSize:14,color:"#475569",lineHeight:1.75,marginBottom:16}}>{report.pathwayRationale||""}</p>
           </div>
+          {/* Privacy notice — prominent warning */}
+          <div style={{margin:"0 40px 24px",background:"#FFF7ED",border:"1px solid #FED7AA",borderLeft:"4px solid #EA580C",borderRadius:8,padding:"16px 20px"}}>
+            <div style={{fontSize:11,fontFamily:"monospace",fontWeight:700,color:"#EA580C",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:6}}>⚠ {isFr?"Rapport non sauvegardé":"Report not saved"}</div>
+            <div style={{fontSize:13,color:"#7C2D12",lineHeight:1.65}}>{isFr?"Ce rapport n'est enregistré nulle part. Aucune donnée personnelle n'est conservée par Passage. Téléchargez votre rapport maintenant — il sera perdu si vous fermez cet onglet.":"This report is not saved anywhere. Passage does not store any personal data. Download your report now — it will be lost when you close this tab."}</div>
+          </div>
           {/* What to do next */}
           <div style={{fontSize:10,fontFamily:"monospace",fontWeight:700,color:"#94a3b8",letterSpacing:"0.18em",textTransform:"uppercase",padding:"0 40px",marginBottom:16}}>{isFr?"CE QU'IL FAUT FAIRE MAINTENANT":"WHAT TO DO NEXT"}</div>
           <div style={{margin:"0 40px 32px",border:"1px solid #E2E8F0",borderRadius:12,overflow:"hidden"}}>
-            {/* Step 1 */}
+            {/* Step 1 — Save report */}
             <div style={{display:"flex",gap:20,padding:24,borderBottom:"1px solid #E2E8F0",alignItems:"flex-start"}}>
               <div style={{width:32,height:32,borderRadius:"50%",background:"#0D2B45",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,fontFamily:"monospace",flexShrink:0,marginTop:2}}>1</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:15,fontWeight:700,color:"#0D2B45",marginBottom:6}}>{isFr?"Enregistrez votre rapport ERSA":"Save your ERSA Report"}</div>
-                <div style={{fontSize:13,color:"#475569",lineHeight:1.65,marginBottom:12}}>{isFr?"Ce document contient votre niveau, vos scores par phase, l'analyse des écarts et le parcours recommandé.":"This document contains your band, phase scores, gap analysis and recommended pathway."}</div>
-                <button onClick={printReport} style={{background:"#0D2B45",color:"white",border:"none",borderRadius:6,padding:"10px 20px",fontSize:13,fontWeight:700,fontFamily:"Georgia,serif",cursor:"pointer"}}>⬇ {isFr?"Imprimer / Enregistrer en PDF":"Print / Save report as PDF"}</button>
+                <div style={{fontSize:13,color:"#475569",lineHeight:1.65,marginBottom:12}}>{isFr?"Contient votre niveau, vos scores par phase, l'analyse des écarts et le parcours recommandé.":"Contains your band, phase scores, gap analysis and recommended pathway."}</div>
+                <button onClick={printReport} style={{background:"#0D2B45",color:"white",border:"none",borderRadius:6,padding:"10px 20px",fontSize:13,fontWeight:700,fontFamily:"Georgia,serif",cursor:"pointer"}}>⬇ {isFr?"Télécharger le rapport (PDF)":"Download report as PDF"}</button>
               </div>
             </div>
-            {/* Step 2 */}
+            {/* Step 2 — Save Q&A record */}
             <div style={{display:"flex",gap:20,padding:24,borderBottom:"1px solid #E2E8F0",alignItems:"flex-start"}}>
               <div style={{width:32,height:32,borderRadius:"50%",background:"#0D2B45",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,fontFamily:"monospace",flexShrink:0,marginTop:2}}>2</div>
               <div style={{flex:1}}>
-                <div style={{fontSize:15,fontWeight:700,color:"#0D2B45",marginBottom:6}}>{isFr?"Demandez un rappel à Passage":"Request a callback from Passage"}</div>
-                <div style={{fontSize:13,color:"#475569",lineHeight:1.65,marginBottom:12}}>{isFr?"Copiez le message ci-dessous et envoyez-le à info@passageexport.com avec votre rapport en pièce jointe.":"Copy the message below and send it to info@passageexport.com with your report attached."}</div>
+                <div style={{fontSize:15,fontWeight:700,color:"#0D2B45",marginBottom:6}}>{isFr?"Enregistrez votre relevé complet de réponses":"Save your full Q&A record"}</div>
+                <div style={{fontSize:13,color:"#475569",lineHeight:1.65,marginBottom:12}}>{isFr?"Contient chaque question posée et votre réponse. Utile à joindre si vous contactez Passage.":"Contains every question and your answer. Attach this if you contact Passage."}</div>
+                <button onClick={printQARecord} style={{background:"#0D2B45",color:"white",border:"none",borderRadius:6,padding:"10px 20px",fontSize:13,fontWeight:700,fontFamily:"Georgia,serif",cursor:"pointer"}}>⬇ {isFr?"Télécharger le relevé Q&R (PDF)":"Download Q&A record as PDF"}</button>
+              </div>
+            </div>
+            {/* Step 3 — Contact Passage */}
+            <div style={{display:"flex",gap:20,padding:24,alignItems:"flex-start"}}>
+              <div style={{width:32,height:32,borderRadius:"50%",background:"#0D2B45",color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,fontFamily:"monospace",flexShrink:0,marginTop:2}}>3</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:15,fontWeight:700,color:"#0D2B45",marginBottom:6}}>{isFr?"Contactez Passage (optionnel)":"Contact Passage (optional)"}</div>
+                <div style={{fontSize:13,color:"#475569",lineHeight:1.65,marginBottom:12}}>{isFr?"Si vous souhaitez discuter de votre parcours, copiez ce message et envoyez-le avec vos deux PDF en pièce jointe.":"If you'd like to discuss your pathway, copy this message and send it with both PDFs attached."}</div>
                 <div style={{background:"#F8F6F2",border:"1px solid #E2E8F0",borderRadius:8,padding:16}}>
                   <div style={{fontSize:10,fontFamily:"monospace",fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",color:"#94a3b8",marginBottom:8}}>{isFr?"Copiez ce message :":"Copy this message:"}</div>
                   <div style={{fontSize:12,fontFamily:"monospace",color:"#475569",marginBottom:8,padding:"6px 10px",background:"white",border:"1px solid #E2E8F0",borderRadius:4,whiteSpace:"pre"}}>To: info@passageexport.com{"\n"}Subject: ERSA Report — {report.businessName||""} — Callback Request</div>
                   <div id="ersa-email-body" style={{fontSize:12,color:"#334155",lineHeight:1.65,whiteSpace:"pre-wrap",padding:"10px 12px",background:"white",border:"1px solid #E2E8F0",borderRadius:4,marginBottom:10,fontFamily:"Georgia,serif"}}>{emailBody}</div>
                   <button onClick={copyEmail} style={{background:"#0D2B45",color:"white",border:"none",borderRadius:6,padding:"9px 18px",fontSize:12,fontWeight:700,fontFamily:"Georgia,serif",cursor:"pointer",width:"100%"}}>{isFr?"Copier le message":"Copy message to clipboard"}</button>
-                  <div id="copy-confirm" style={{fontSize:11,fontFamily:"monospace",color:"#1A5C38",textAlign:"center",marginTop:6,display:"none"}}>✓ {isFr?"Copié — ouvrez votre messagerie, collez et envoyez":"Copied — open your email, paste and send"}</div>
+                  <div id="copy-confirm" style={{fontSize:11,fontFamily:"monospace",color:"#1A5C38",textAlign:"center",marginTop:6,display:"none"}}>✓ {isFr?"Copié — joignez les deux PDF et envoyez":"Copied — attach both PDFs and send"}</div>
                 </div>
               </div>
             </div>
