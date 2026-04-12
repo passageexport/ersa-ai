@@ -379,24 +379,24 @@ export default function ERSA() {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
-          // Smart trimming: full history mid-assessment, condensed for final synthesis
-          // At Q43 (final question), the AI response needs up to 4000 tokens for JSON
-          // Sending full verbose history pushes us into 429 rate limit territory
-          // Solution: for the final call, send only user answers (not AI question text)
-          // This preserves all scoring context while cutting token count by ~60%
+          // Structural 429 fix: condense AI messages on every call
+          // AI question text is verbose — acknowledgements + questions can be 200-400 chars each
+          // User answers are short — 20-60 chars each
+          // Condensing AI messages to 150 chars preserves full scoring context
+          // while cutting total token payload by ~55% across the entire assessment
           messages: (() => {
             const all = messagesRef.current.map(m=>({role:m.role,content:m.content}));
-            const isLastQuestion = currentQIndexRef.current >= Q_SEQUENCE.length - 1;
-            if(!isLastQuestion || all.length <= 10) return all;
-            // Final synthesis: keep opening message + strip AI verbosity, keep user answers
-            const opening = all[0];
+            if(all.length <= 4) return all; // Don't condense early exchanges
+            const opening = all[0]; // Always keep full opening (producer intro)
             const condensed = [];
             for(let i=1; i<all.length; i++){
               const m = all[i];
-              if(m.role==="user") condensed.push(m);
-              else {
-                // Keep AI messages but strip to just the question — first 120 chars
-                const short = m.content.slice(0,120).trim();
+              if(m.role==="user"){
+                condensed.push(m); // User answers always kept in full
+              } else {
+                // AI messages: keep first 150 chars — enough for question context
+                // The system prompt carries all question definitions anyway
+                const short = m.content.length > 150 ? m.content.slice(0,150).trim()+"…" : m.content;
                 condensed.push({role:"assistant", content:short});
               }
             }
@@ -434,7 +434,7 @@ export default function ERSA() {
       if(reportData){
         setLoading(false);
         loadingRef.current = false;
-        reportAttemptsRef.current = 0; // Reset on success
+        reportAttemptsRef.current = 0; // Reset counter on any successful response
         // Show holding message before switching screen
         const preparingMsg = fr()
           ? "Votre évaluation est maintenant terminée. Je compile votre rapport — cela peut prendre jusqu'à deux minutes. Veuillez ne pas fermer cet onglet."
@@ -479,6 +479,7 @@ export default function ERSA() {
       setMessages([...messagesRef.current]);
       setLoading(false);
       loadingRef.current = false;
+      reportAttemptsRef.current = 0; // Reset on any successful response
       updatePhases(clean);
       updateProgress(qKey);
       // Add AI message to chat items
@@ -488,24 +489,21 @@ export default function ERSA() {
       if(e.name==="AbortError") return; // Intentional abort from restart — do nothing
       setLoading(false);
       loadingRef.current = false;
-      // Check if we were on the final question — if so, offer retry rather than generic error
-      const wasOnFinalQ = currentQIndexRef.current >= Q_SEQUENCE.length - 1;
-      if(wasOnFinalQ){
-        reportAttemptsRef.current += 1;
-        const errCode = "ERR-" + Date.now().toString(36).toUpperCase().slice(-6);
-        if(reportAttemptsRef.current >= 2){
-          const finalErrMsg = fr()
-            ? "Le rapport n'a pas pu être généré après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran.\n\nCode de référence : " + errCode
-            : "The report could not be generated after two attempts. Please contact info@passageexport.com and attach a screenshot.\n\nReference code: " + errCode;
-          setChatItems(prev => [...prev, {type:"ai", text:finalErrMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
-        } else {
-          const retryMsg = fr()
-            ? "Une erreur de connexion s'est produite lors de la génération du rapport."
-            : "A connection error occurred while generating the report.";
-          setChatItems(prev => [...prev, {type:"retryPrompt", text:retryMsg, id:Date.now()+Math.random()}]);
-        }
+      // Offer retry button on ALL connection errors — preserves answers already given
+      reportAttemptsRef.current += 1;
+      const errCode = "ERR-" + Date.now().toString(36).toUpperCase().slice(-6);
+      if(reportAttemptsRef.current >= 2){
+        // Second consecutive failure — show error code and contact instructions
+        const finalErrMsg = fr()
+          ? "La connexion a échoué après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran de ce message.\n\nCode de référence : " + errCode
+          : "The connection failed after two attempts. Please contact info@passageexport.com and attach a screenshot of this message.\n\nReference code: " + errCode;
+        setChatItems(prev => [...prev, {type:"ai", text:finalErrMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
       } else {
-        setChatItems(prev => [...prev, {type:"error", text: fr()?"Erreur de connexion. Veuillez réessayer.":"Connection error. Please try again.", id:Date.now()}]);
+        // First failure — offer retry button, preserve all answers
+        const retryMsg = fr()
+          ? "Une erreur de connexion s'est produite. Vos réponses sont préservées."
+          : "A connection error occurred. Your answers have been preserved.";
+        setChatItems(prev => [...prev, {type:"retryPrompt", text:retryMsg, id:Date.now()+Math.random()}]);
       }
       scrollToBottom();
     }
