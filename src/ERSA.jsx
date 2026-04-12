@@ -583,9 +583,18 @@ export default function ERSA() {
       else if(t.includes("chilled")) storageClassRef.current="chilled";
       else if(t.includes("frozen")) storageClassRef.current="frozen";
     }
+    // Q43 is the last question — show a holding message immediately before the API call fires
+    // The synthesis call takes longer than a normal question. Producers need to know why.
+    const isLastQuestion = Q_SEQUENCE[currentQIndexRef.current] === "Q43";
     messagesRef.current = [...messagesRef.current, {role:"user",content:text}];
     setMessages([...messagesRef.current]);
     setChatItems(prev => [...prev, {type:"user", text, id:Date.now()+Math.random()}]);
+    if(isLastQuestion){
+      const holdMsg = fr()
+        ? "Merci — vous avez complété les 45 questions. Je compile maintenant votre rapport d'évaluation. Cela peut prendre 1 à 2 minutes — merci de ne pas fermer cet onglet."
+        : "Thank you — you've completed all 45 questions. I'm now compiling your Export Readiness Report. This may take 1 to 2 minutes — please don't close this tab.";
+      setChatItems(prev => [...prev, {type:"ai", text:holdMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
+    }
     setLoading(true);
     loadingRef.current = true;
     scrollToBottom();
