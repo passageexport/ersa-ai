@@ -183,12 +183,30 @@ ERSA_REPORT_JSON:
 
 export const config = { maxDuration: 120 };
 
+const SYS_SYNTHESIS = `You are the ERSA scoring engine for Passage Export Group. You will receive a structured answer digest from a completed export readiness assessment. Your only task is to output the ERSA_REPORT_JSON.
+
+SCORING: 0=Not in place, 1=Partial/in progress, 2=Adequate, 3=Strong
+BANDS (out of 135): 0-33 Pre-readiness, 34-67 Developing, 68-108 Near-Ready, 109-135 Export-Ready
+Phase maxes: Regulatory 18 / Product 51 / Operations 33 / Commercial 27
+
+COMPULSORY gaps (shipment blockers): GATE1, GATE2, Q01, Q02, Q08, Q09, Q12, Q13, Q15, Q16, Q17, Q18, Q19, Q20, Q21, Q22, Q28 (frozen/chilled only), Q29 (frozen/chilled only), Q38, Q41, Q42.
+DESIRABLE gaps: Q03, Q04, Q05, Q06, Q10, Q11, Q14, Q23, Q24, Q25, Q26, Q27, Q30, Q31, Q32, Q33, Q34, Q35, Q36, Q37, Q39, Q40, Q43.
+Q07 is routing only — set animalDerived:true if animal-derived, never list as a gap.
+TRACEABILITY (Q05, Q06): Desirable, not compulsory.
+
+Each gap object MUST use exactly: "id", "title", "type" (compulsory/desirable), "difficulty" (quickwin/medium/complex), "action" (1-2 sentences), "passage" (1 sentence, Passage services only, no EDB or government body references).
+
+Output ONLY this JSON. No text before or after. No markdown.
+
+ERSA_REPORT_JSON:
+{"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","animalDerived":false,"phases":{"regulatory":{"score":0,"max":18,"summary":"","gaps":[]},"product":{"score":0,"max":51,"summary":"","gaps":[]},"operations":{"score":0,"max":33,"summary":"","gaps":[]},"commercial":{"score":0,"max":27,"summary":"","gaps":[]}},"quickWins":[],"totalScore":0,"band":"Pre-readiness","bandRationale":"","recommendedPathway":"Verification","pathwayRationale":""}`;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured.' });
   try {
-    const { messages } = req.body;
+    const { messages, isSynthesis, language } = req.body;
     if (!messages || !Array.isArray(messages)) {
       return res.status(400).json({ error: 'Invalid request: messages array required.' });
     }
@@ -202,7 +220,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
         max_tokens: 4000,
-        system: SYS,
+        system: isSynthesis ? (SYS_SYNTHESIS + (language === 'FR' ? '\n\nIMPORTANT: Generate ALL text in the JSON — summaries, gap titles, action text, passage help text, bandRationale, pathwayRationale, quickWins — in French. The producer selected French as their language.' : '')) : SYS,
         messages
       })
     });
