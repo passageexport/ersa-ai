@@ -399,8 +399,8 @@ export default function ERSA() {
         if(reportAttemptsRef.current >= 2){
           // Second failure — show error code and contact instructions
           const finalErrMsg = isFrNow
-            ? \`L'évaluation est complète mais le rapport n'a pas pu être généré après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran de ce message.\n\nCode de référence : \${errCode}\`
-            : \`The assessment is complete but the report could not be generated after two attempts. Please contact info@passageexport.com and attach a screenshot of this message.\n\nReference code: \${errCode}\`;
+            ? "L'évaluation est complète mais le rapport n'a pas pu être généré après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran de ce message.\n\nCode de référence : " + errCode
+            : "The assessment is complete but the report could not be generated after two attempts. Please contact info@passageexport.com and attach a screenshot of this message.\n\nReference code: " + errCode;
           setChatItems(prev => [...prev, {type:"ai", text:finalErrMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
         } else {
           // First failure — offer retry
@@ -475,8 +475,8 @@ export default function ERSA() {
         const errCode = "ERR-" + Date.now().toString(36).toUpperCase().slice(-6);
         if(reportAttemptsRef.current >= 2){
           const finalErrMsg = fr()
-            ? \`Le rapport n'a pas pu être généré après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran.\n\nCode de référence : \${errCode}\`
-            : \`The report could not be generated after two attempts. Please contact info@passageexport.com and attach a screenshot.\n\nReference code: \${errCode}\`;
+            ? "Le rapport n'a pas pu être généré après deux tentatives. Veuillez contacter info@passageexport.com en joignant une capture d'écran.\n\nCode de référence : " + errCode
+            : "The report could not be generated after two attempts. Please contact info@passageexport.com and attach a screenshot.\n\nReference code: " + errCode;
           setChatItems(prev => [...prev, {type:"ai", text:finalErrMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
         } else {
           const retryMsg = fr()
