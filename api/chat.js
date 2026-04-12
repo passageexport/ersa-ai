@@ -14,6 +14,8 @@ INTAKE DATA: You will receive the producer's name, business name, product range,
 
 OPENING: Start immediately with Gate Question 1. Do not introduce yourself at length. One brief welcoming sentence maximum, then straight into the first question.
 
+CRITICAL FOR FINAL JSON: When outputting the ERSA_REPORT_JSON at the end, do not include ANY conversational text before or after the JSON block. Output only: ERSA_REPORT_JSON: followed immediately by the JSON object. Nothing else.
+
 ELIGIBILITY GATES: If the answer to Gate Q1 or Gate Q2 is No or Expired, immediately inform the producer they are Not Eligible. Your response MUST contain the exact phrase "Not Eligible" — this is used by the system to stop the assessment. Explain warmly why registration/licensing is a prerequisite, and tell them to please contact Passage directly on info@passageexport.com. Do not ask any further questions. Do not append any [ERSA_Q] tag. End the conversation there.
 
 COMPULSORY vs DESIRABLE: When identifying gaps, classify each as follows.
@@ -152,10 +154,20 @@ Q43 → [ERSA_Q:Q43]
 
 NEVER use a tag that does not match the question you just asked. Always verify the tag matches the question before ending your message.
 
+FINAL SYNTHESIS: After all phases, output ONLY this JSON. No text before it, no text after it. The JSON must be complete — do not truncate it. Output ERSA_REPORT_JSON: on one line, then the complete JSON object immediately after. Each gap object in the gaps arrays MUST use exactly these field names:
+- "id": the question reference (e.g. "Q01", "Q13")
+- "title": short name of the gap (e.g. "Export Health Certificate not obtained")
+- "type": exactly "compulsory" or "desirable" (lowercase)
+- "difficulty": exactly "quickwin", "medium", or "complex" (lowercase, one word)
+- "action": what the producer must do to close this gap (1-2 sentences)
+- "passage": how Passage can specifically help with this gap (1 sentence)
+
+Do not use any other field names. Do not omit any fields.
+
 FINAL SYNTHESIS: After all phases, output ONLY this JSON:
 
 ERSA_REPORT_JSON:
-{"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","animalDerived":false,"phases":{"regulatory":{"score":0,"max":18,"summary":"","gaps":[]},"product":{"score":0,"max":51,"summary":"","gaps":[]},"operations":{"score":0,"max":33,"summary":"","gaps":[]},"commercial":{"score":0,"max":27,"summary":"","gaps":[]}},"quickWins":[],"totalScore":0,"band":"Pre-readiness","bandRationale":"","recommendedPathway":"Verification","pathwayRationale":""}`;
+{"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","animalDerived":false,"phases":{"regulatory":{"score":0,"max":18,"summary":"","gaps":[{"id":"Q01","title":"Export Health Certificate not yet obtained","type":"compulsory","difficulty":"medium","action":"Apply for Export Health Certificate through the Agricultural Marketing Board of Mauritius before any shipment can be coordinated.","passage":"Passage can guide you through the EHC application process and connect you with the relevant Mauritian authority."}]},"product":{"score":0,"max":51,"summary":"","gaps":[]},"operations":{"score":0,"max":33,"summary":"","gaps":[]},"commercial":{"score":0,"max":27,"summary":"","gaps":[]}},"quickWins":["Example quick win action"],"totalScore":0,"band":"Pre-readiness","bandRationale":"","recommendedPathway":"Verification","pathwayRationale":""}`;
 
 export const config = { maxDuration: 60 };
 
@@ -177,7 +189,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 4000,
+        max_tokens: 6000,
         system: SYS,
         messages
       })
