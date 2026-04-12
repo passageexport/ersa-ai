@@ -378,7 +378,7 @@ function detectQ(t){
   return all[all.length-1][1];
 }
 function cleanMsg(t){ return t.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").replace(/\*\*/g,"").replace(/\*/g,"").replace(/#{1,6}\s/g,"").trim(); }
-function parseReport(t){ if(!t) return null; const i=t.indexOf("ERSA_REPORT_JSON:"); const j=t.indexOf("{"producerName""); const idx=i>=0?i:(j>=0?j-17:-1); if(idx<0&&j<0) return null; try{ const after=i>=0?t.slice(i+17).trim():t.slice(j).trim(); const start=after.indexOf("{"); const end=after.lastIndexOf("}"); if(start<0||end<0) return null; const parsed=JSON.parse(after.slice(start,end+1)); if(parsed&&parsed.producerName!==undefined) return parsed; return null; }catch(e){ return null; } }
+function parseReport(t){ if(!t) return null; const i=t.indexOf("ERSA_REPORT_JSON:"); if(i<0) return null; try{ const s=t.slice(i+17).trim(); const start=s.indexOf("{"); const end=s.lastIndexOf("}"); if(start<0||end<0) return null; const parsed=JSON.parse(s.slice(start,end+1)); if(parsed&&parsed.producerName!==undefined) return parsed; return null; }catch(e){ return null; } }
 function qKeyToNum(qKey){
   if(!qKey) return null;
   if(qKey==="GATE1") return 1;
