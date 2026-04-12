@@ -169,7 +169,7 @@ FINAL SYNTHESIS: After all phases, output ONLY this JSON:
 ERSA_REPORT_JSON:
 {"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","animalDerived":false,"phases":{"regulatory":{"score":0,"max":18,"summary":"","gaps":[{"id":"Q01","title":"Export Health Certificate not yet obtained","type":"compulsory","difficulty":"medium","action":"Apply for Export Health Certificate through the Agricultural Marketing Board of Mauritius before any shipment can be coordinated.","passage":"Passage can guide you through the EHC application process and connect you with the relevant Mauritian authority."}]},"product":{"score":0,"max":51,"summary":"","gaps":[]},"operations":{"score":0,"max":33,"summary":"","gaps":[]},"commercial":{"score":0,"max":27,"summary":"","gaps":[]}},"quickWins":["Example quick win action"],"totalScore":0,"band":"Pre-readiness","bandRationale":"","recommendedPathway":"Verification","pathwayRationale":""}`;
 
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 120 };
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
