@@ -222,8 +222,36 @@ function detectQ(t){
   if(!all.length) return null;
   return all[all.length-1][1];
 }
-function cleanMsg(t){ const jsonIdx=t.indexOf("ERSA_REPORT_JSON:"); const cleaned=jsonIdx>=0?t.slice(0,jsonIdx).trim():t; return cleaned.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").replace(/\*\*/g,"").replace(/\*/g,"").replace(/#{1,6}\s/g,"").trim(); }
-function parseReport(t){ if(!t) return null; const i=t.indexOf("ERSA_REPORT_JSON:"); if(i<0) return null; try{ const s=t.slice(i+17).trim(); const start=s.indexOf("{"); const end=s.lastIndexOf("}"); if(start<0||end<0) return {_parseError:true}; const parsed=JSON.parse(s.slice(start,end+1)); if(parsed&&parsed.totalScore!==undefined) return parsed; if(parsed&&parsed.producerName!==undefined) return parsed; return {_parseError:true}; }catch(e){ return {_parseError:true}; } }
+function cleanMsg(t){ const jsonIdx=t.indexOf("ERSA_REPORT_JSON:"); const jsonIdx2=t.indexOf("{"producerName""); const cutAt=jsonIdx>=0?jsonIdx:(jsonIdx2>=0?jsonIdx2:-1); const cleaned=cutAt>=0?t.slice(0,cutAt).trim():t; return cleaned.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,"").replace(/\*\*/g,"").replace(/\*/g,"").replace(/#{1,6}\s/g,"").trim(); }
+function parseReport(t){
+  if(!t) return null;
+  const i=t.indexOf("ERSA_REPORT_JSON:");
+  // Try primary path: find ERSA_REPORT_JSON: marker
+  if(i>=0){
+    try{
+      const s=t.slice(i+17).trim();
+      const start=s.indexOf("{");
+      const end=s.lastIndexOf("}");
+      if(start>=0&&end>start){
+        const parsed=JSON.parse(s.slice(start,end+1));
+        if(parsed&&(parsed.totalScore!==undefined||parsed.producerName!==undefined)) return parsed;
+      }
+    }catch(e){}
+    return {_parseError:true}; // Marker found but JSON failed — stop assessment
+  }
+  // Fallback: scan for a JSON blob containing producerName (handles missing marker)
+  try{
+    const start=t.indexOf("{"producerName"");
+    if(start>=0){
+      const end=t.lastIndexOf("}");
+      if(end>start){
+        const parsed=JSON.parse(t.slice(start,end+1));
+        if(parsed&&(parsed.totalScore!==undefined||parsed.producerName!==undefined)) return parsed;
+      }
+    }
+  }catch(e){}
+  return null;
+}
 function qKeyToNum(qKey){
   if(!qKey) return null;
   if(qKey==="GATE1") return 1;
