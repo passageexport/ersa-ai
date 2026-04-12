@@ -379,12 +379,13 @@ export default function ERSA() {
         method: "POST",
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({
-          // Keep first message (producer intro) + last 12 exchanges to control payload size
+          // Keep first message (producer intro) + last 6 exchanges to control payload size
           // The system prompt in chat.js carries all question context — full history not needed
+          // Aggressive trim needed: at Q45 the JSON synthesis response alone needs ~4000 tokens
           messages: (() => {
             const all = messagesRef.current.map(m=>({role:m.role,content:m.content}));
-            if(all.length <= 14) return all;
-            return [all[0], ...all.slice(-12)];
+            if(all.length <= 8) return all;
+            return [all[0], ...all.slice(-6)];
           })()
         }),
         signal: abortControllerRef.current.signal
