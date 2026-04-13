@@ -224,6 +224,8 @@ function detectQ(t){
 function cleanMsg(t){ const jsonIdx=t.indexOf('ERSA_REPORT_JSON:'); const jsonIdx2=t.indexOf('{"producerName"'); const cutAt=jsonIdx>=0?jsonIdx:(jsonIdx2>=0?jsonIdx2:-1); const cleaned=cutAt>=0?t.slice(0,cutAt).trim():t; return cleaned.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,6}\s/g,'').trim(); }
 function parseReport(t){
   if(!t) return null;
+  // Strip markdown code fences if Haiku wraps the JSON (```json ... ```)
+  t = t.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
   const i=t.indexOf("ERSA_REPORT_JSON:");
   // Try primary path: find ERSA_REPORT_JSON: marker
   if(i>=0){
