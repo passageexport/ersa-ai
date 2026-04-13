@@ -665,18 +665,38 @@ export default function ERSA() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   if(screen==="lang") return (
-    <div className="ersa-wrap screen active" style={{alignItems:"center",justifyContent:"center"}}>
+    <div className="ersa-wrap screen active" style={{alignItems:"center",justifyContent:"center",padding:"24px 24px 40px"}}>
       <div style={{textAlign:"center",maxWidth:480,width:"100%"}}>
         <div className="eyebrow">Passage Export Group</div>
         <div style={{width:64,height:64,borderRadius:"50%",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,margin:"0 auto 24px"}}>◈</div>
         <h1>Export Readiness<br/>Self-Assessment</h1>
-        <p style={{fontSize:13,color:"rgba(255,255,255,.4)",fontStyle:"italic",marginBottom:36}}>Choose your language / Choisissez votre langue</p>
-        <div style={{display:"flex",gap:12,justifyContent:"center"}}>
+        <p style={{fontSize:13,color:"rgba(255,255,255,.4)",fontStyle:"italic",marginBottom:32}}>Choose your language / Choisissez votre langue</p>
+        <div style={{display:"flex",gap:12,justifyContent:"center",marginBottom:32}}>
           <button className="btn-primary" onClick={()=>{langRef.current="EN";setLangState("EN");setScreen("intake");}}>English</button>
           <button className="btn-ghost" onClick={()=>{langRef.current="FR";setLangState("FR");setScreen("intake");}}>Français</button>
         </div>
-        <p style={{marginTop:24,fontSize:12,color:"rgba(255,255,255,0.5)",textAlign:"center",lineHeight:1.6,maxWidth:400,margin:"24px auto 0",fontFamily:"monospace",padding:"0 16px"}}>
-          For the best experience, we recommend completing this assessment on a laptop or desktop.
+        {/* Soft launch notice */}
+        <div style={{background:"rgba(183,98,10,0.15)",border:"1px solid rgba(183,98,10,0.4)",borderLeft:"3px solid #B7620A",borderRadius:8,padding:"16px 20px",textAlign:"left",marginBottom:20}}>
+          <div style={{fontSize:10,fontFamily:"monospace",fontWeight:700,color:"#B7620A",letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:8}}>⚠ Soft Launch — April 2026</div>
+          <p style={{fontSize:13,color:"rgba(255,255,255,0.8)",lineHeight:1.7,margin:0}}>
+            This tool is in its first weeks of operation. You may occasionally experience a slow response or a connection error during the assessment — particularly at the end when your report is being compiled. If this happens, a retry button will appear. In most cases a single retry is all that is needed.
+          </p>
+          <p style={{fontSize:13,color:"rgba(255,255,255,0.8)",lineHeight:1.7,margin:"10px 0 0 0"}}>
+            If you are unable to complete the assessment, please contact us directly at <span style={{color:"#90CAF9",fontFamily:"monospace"}}>info@passageexport.com</span> and we will assist you personally.
+          </p>
+        </div>
+        {/* FR version of notice */}
+        <div style={{background:"rgba(183,98,10,0.1)",border:"1px solid rgba(183,98,10,0.3)",borderLeft:"3px solid #B7620A",borderRadius:8,padding:"16px 20px",textAlign:"left",marginBottom:24}}>
+          <div style={{fontSize:10,fontFamily:"monospace",fontWeight:700,color:"#B7620A",letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:8}}>⚠ Lancement en phase pilote — Avril 2026</div>
+          <p style={{fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.7,margin:0}}>
+            Cet outil est dans ses premières semaines de fonctionnement. Vous pourrez occasionnellement rencontrer une réponse lente ou une erreur de connexion — notamment à la fin lors de la génération du rapport. Un bouton de nouvelle tentative apparaîtra si nécessaire.
+          </p>
+          <p style={{fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.7,margin:"10px 0 0 0"}}>
+            En cas de difficulté, contactez-nous directement à <span style={{color:"#90CAF9",fontFamily:"monospace"}}>info@passageexport.com</span>.
+          </p>
+        </div>
+        <p style={{fontSize:11,color:"rgba(255,255,255,0.3)",textAlign:"center",lineHeight:1.6,fontFamily:"monospace",padding:"0 16px",margin:0}}>
+          For best results, use a laptop or desktop. / Pour de meilleurs résultats, utilisez un ordinateur.
         </p>
       </div>
     </div>
