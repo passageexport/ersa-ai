@@ -259,8 +259,11 @@ function parseReport(t){
     if(result3) return result3;
   }
 
-  // All strategies failed — signal parse error only if marker was present
-  if(markerIdx >= 0) return {_parseError: true};
+  // All strategies failed — log for diagnosis and signal parse error
+  if(markerIdx >= 0) {
+    console.error("[ERSA] parseReport failed. Response length:", t.length, "First 500 chars:", t.slice(0, 500));
+    return {_parseError: true};
+  }
   return null;
 }
 function qKeyToNum(qKey){
