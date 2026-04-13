@@ -224,33 +224,43 @@ function detectQ(t){
 function cleanMsg(t){ const jsonIdx=t.indexOf('ERSA_REPORT_JSON:'); const jsonIdx2=t.indexOf('{"producerName"'); const cutAt=jsonIdx>=0?jsonIdx:(jsonIdx2>=0?jsonIdx2:-1); const cleaned=cutAt>=0?t.slice(0,cutAt).trim():t; return cleaned.replace(/\[ERSA_Q:(GATE1|GATE2|Q\d{2})\]/g,'').replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,6}\s/g,'').trim(); }
 function parseReport(t){
   if(!t) return null;
-  // Strip markdown code fences if Haiku wraps the JSON (```json ... ```)
+  // Strip markdown code fences — Haiku sometimes wraps JSON in ```json ... ```
   t = t.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-  const i=t.indexOf("ERSA_REPORT_JSON:");
-  // Try primary path: find ERSA_REPORT_JSON: marker
-  if(i>=0){
-    try{
-      const s=t.slice(i+17).trim();
-      const start=s.indexOf("{");
-      const end=s.lastIndexOf("}");
-      if(start>=0&&end>start){
-        const parsed=JSON.parse(s.slice(start,end+1));
-        if(parsed&&(parsed.totalScore!==undefined||parsed.producerName!==undefined)) return parsed;
-      }
-    }catch(e){}
-    return {_parseError:true}; // Marker found but JSON failed — stop assessment
+
+  // Track if the ERSA marker was found (affects final error signal)
+  const markerIdx = t.indexOf("ERSA_REPORT_JSON:");
+
+  // Helper: attempt to parse a JSON substring, return object if valid ERSA report
+  function tryParse(str) {
+    try {
+      const start = str.indexOf("{");
+      const end = str.lastIndexOf("}");
+      if(start < 0 || end <= start) return null;
+      const parsed = JSON.parse(str.slice(start, end + 1));
+      if(parsed && (parsed.totalScore !== undefined || parsed.producerName !== undefined)) return parsed;
+    } catch(e) {}
+    return null;
   }
-  // Fallback: scan for a JSON blob containing producerName (handles missing marker)
-  try{
-    const start=t.indexOf('{"producerName"');
-    if(start>=0){
-      const end=t.lastIndexOf("}");
-      if(end>start){
-        const parsed=JSON.parse(t.slice(start,end+1));
-        if(parsed&&(parsed.totalScore!==undefined||parsed.producerName!==undefined)) return parsed;
-      }
-    }
-  }catch(e){}
+
+  // Strategy 1: after ERSA_REPORT_JSON: marker
+  if(markerIdx >= 0) {
+    const result = tryParse(t.slice(markerIdx + 17));
+    if(result) return result;
+  }
+
+  // Strategy 2: first { to last } in the entire response
+  const result2 = tryParse(t);
+  if(result2) return result2;
+
+  // Strategy 3: from "producerName" key specifically
+  const pnIdx = t.indexOf('{"producerName"');
+  if(pnIdx >= 0) {
+    const result3 = tryParse(t.slice(pnIdx));
+    if(result3) return result3;
+  }
+
+  // All strategies failed — signal parse error only if marker was present
+  if(markerIdx >= 0) return {_parseError: true};
   return null;
 }
 function qKeyToNum(qKey){
@@ -425,7 +435,7 @@ export default function ERSA() {
         messagesToSend = [
           {
             role: "user",
-            content: digest + "\n\nAll 45 questions have been answered. Please now generate the complete ERSA report JSON. Output only ERSA_REPORT_JSON: followed immediately by the complete JSON object. No other text."
+            content: digest + "\n\nAll 45 questions have been answered. Generate the ERSA report JSON now. Your response must begin with exactly: ERSA_REPORT_JSON:\nThen immediately the JSON object. No preamble. No explanation. No code fences. Just ERSA_REPORT_JSON: then the JSON."
           }
         ];
       } else {
