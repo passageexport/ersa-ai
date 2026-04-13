@@ -2,6 +2,13 @@
 // ANTHROPIC_API_KEY is set in Vercel environment variables — never in code
 // System prompt is defined server-side — never sent from the client
 
+// ── Model configuration ───────────────────────────────────────────────────────
+// To update models: change the string values here only. Check deprecations at:
+// platform.claude.com/docs/about-claude/model-deprecations
+const MODEL_QUESTIONS = 'claude-haiku-4-5-20251001'; // Q1-Q42 conversational calls
+const MODEL_SYNTHESIS = 'claude-haiku-4-5-20251001'; // Q43 report generation — Haiku handles structured JSON well and avoids Sonnet 529s
+// ─────────────────────────────────────────────────────────────────────────────
+
 const SYS = `You are the ERSA assessment agent for Passage Export Group — the infrastructure builder for Mauritian food exports and the founding architect of Island Creole Cuisine as a global food category.
 
 You conduct structured export readiness assessments for Mauritian food producers across four phases. You are warm, professional, direct, and knowledgeable. You ask one question at a time and listen carefully.
@@ -218,9 +225,9 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        // Haiku for conversational questions (fast, less congested infrastructure, lower 529 rate)
-        // Sonnet only for synthesis (Q43 report generation — full quality needed for JSON output)
-        model: isSynthesis ? 'claude-sonnet-4-5' : 'claude-haiku-4-5-20251001',
+        // All calls use Haiku — fast, less congested, handles structured JSON well
+        // Model strings defined at top of file — update there when Anthropic deprecates
+        model: isSynthesis ? MODEL_SYNTHESIS : MODEL_QUESTIONS,
         max_tokens: isSynthesis ? 4000 : 1000,
         system: isSynthesis ? (SYS_SYNTHESIS + (language === 'FR' ? '\n\nIMPORTANT: Generate ALL text in the JSON — summaries, gap titles, action text, passage help text, bandRationale, pathwayRationale, quickWins — in French. The producer selected French as their language.' : '')) : SYS,
         messages
