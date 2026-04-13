@@ -231,14 +231,46 @@ function parseReport(t){
   const markerIdx = t.indexOf("ERSA_REPORT_JSON:");
 
   // Helper: attempt to parse a JSON substring, return object if valid ERSA report
+  // Also attempts JSON repair if the response was truncated (missing closing braces)
   function tryParse(str) {
+    const start = str.indexOf("{");
+    if(start < 0) return null;
+    const jsonStr = str.slice(start);
+
+    // First try: standard parse up to last }
+    const end = jsonStr.lastIndexOf("}");
+    if(end > 0) {
+      try {
+        const parsed = JSON.parse(jsonStr.slice(0, end + 1));
+        if(parsed && (parsed.totalScore !== undefined || parsed.producerName !== undefined)) return parsed;
+      } catch(e) {}
+    }
+
+    // Repair attempt: count unclosed braces and brackets, append closers
+    // This handles truncated JSON where the response was cut before final closing braces
     try {
-      const start = str.indexOf("{");
-      const end = str.lastIndexOf("}");
-      if(start < 0 || end <= start) return null;
-      const parsed = JSON.parse(str.slice(start, end + 1));
+      let depth = 0; let inStr = false; let escape = false;
+      for(let i = 0; i < jsonStr.length; i++){
+        const c = jsonStr[i];
+        if(escape){ escape = false; continue; }
+        if(c === "\\" && inStr){ escape = true; continue; }
+        if(c === "\"" && !escape){ inStr = !inStr; continue; }
+        if(!inStr){
+          if(c === "{" || c === "[") depth++;
+          else if(c === "}" || c === "]") depth--;
+        }
+      }
+      // Append missing closing braces (depth tells us how many are missing)
+      let repaired = jsonStr;
+      // If last char is inside a string, close the string first
+      const lastChar = jsonStr.trimEnd().slice(-1);
+      if(inStr) repaired += "\"";
+      // Append closing braces/brackets needed
+      for(let i = 0; i < depth; i++) repaired += "}";
+      const parsed = JSON.parse(repaired);
       if(parsed && (parsed.totalScore !== undefined || parsed.producerName !== undefined)) return parsed;
     } catch(e) {}
+
     return null;
   }
 
