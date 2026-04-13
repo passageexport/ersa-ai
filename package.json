@@ -1,6 +1,7 @@
 {
   "name": "passage-ersa",
   "version": "2.0.0",
+  "type": "module",
   "description": "Passage Export Group — AI-Powered Export Readiness Self-Assessment (ERSA) v2",
   "scripts": {
     "dev": "vite",
