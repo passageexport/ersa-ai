@@ -261,7 +261,7 @@ function parseReport(t){
 
   // All strategies failed — log for diagnosis and signal parse error
   if(markerIdx >= 0) {
-    console.error("[ERSA] parseReport failed. Response length:", t.length, "First 500 chars:", t.slice(0, 500));
+    console.error("[ERSA] parseReport failed. Length:", t.length, "\nFirst 500:", t.slice(0, 500), "\nLast 200:", t.slice(-200));
     return {_parseError: true};
   }
   return null;
@@ -1127,13 +1127,20 @@ function ReportScreen({report, lang, onRestart, messages}){
     const d=report.phases?.[ph.k]||{score:0,max:ph.max,summary:"",gaps:[]};
     const pct=d.max>0?Math.round((d.score/d.max)*100):0;
     const sc=pct>=80?"#1A5C38":pct>=50?"#2E86C1":pct>=25?"#B7620A":"#B91C1C";
+    // Force all gap fields to strings — Sonnet occasionally returns action/passage as objects
+    const strVal = (v) => {
+      if(!v) return "";
+      if(typeof v === "string") return v;
+      if(typeof v === "object") return Object.values(v).filter(Boolean).join(" ");
+      return String(v);
+    };
     const gaps=(d.gaps||[]).map(g=>({
-      id:g.id||g.ref||g.reference||"",
-      title:g.title||g.name||g.gap||g.item||"",
-      type:(g.type||g.classification||"desirable").toLowerCase(),
-      difficulty:(g.difficulty||g.effort||"medium").toLowerCase().replace(/\s/g,""),
-      action:g.action||g.description||g.text||g.detail||"",
-      passage:g.passage||g.help||g.passageHelp||g.passage_help||""
+      id:strVal(g.id||g.ref||g.reference),
+      title:strVal(g.title||g.name||g.gap||g.item),
+      type:strVal(g.type||g.classification||"desirable").toLowerCase(),
+      difficulty:strVal(g.difficulty||g.effort||"medium").toLowerCase().replace(/\s/g,""),
+      action:strVal(g.action||g.description||g.text||g.detail),
+      passage:strVal(g.passage||g.help||g.passageHelp||g.passage_help)
     }));
     return (
       <div key={ph.k} style={{margin:"0 0 16px",border:"1px solid #E2E8F0",borderRadius:12,overflow:"hidden"}}>
