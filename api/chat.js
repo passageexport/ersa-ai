@@ -230,7 +230,7 @@ export default async function handler(req, res) {
         // All calls use Haiku — fast, less congested, handles structured JSON well
         // Model strings defined at top of file — update there when Anthropic deprecates
         model: isSynthesis ? MODEL_SYNTHESIS : MODEL_QUESTIONS,
-        max_tokens: isSynthesis ? 4000 : 1000,
+        max_tokens: isSynthesis ? 6000 : 1000, // 6000 for synthesis — full report JSON can reach 15k chars (~3750 tokens)
         system: isSynthesis ? (SYS_SYNTHESIS + (language === 'FR' ? '\n\nIMPORTANT: Generate ALL text in the JSON — summaries, gap titles, action text, passage help text, bandRationale, pathwayRationale, quickWins — in French. The producer selected French as their language.' : '')) : SYS,
         messages
       })
