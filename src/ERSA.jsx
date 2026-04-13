@@ -397,7 +397,7 @@ export default function ERSA() {
       // Prevents burst 429s when a producer clicks through questions quickly
       const now = Date.now();
       const msSinceLast = now - lastCallTimeRef.current;
-      const MIN_CALL_GAP = 3000; // 3 seconds between calls
+      const MIN_CALL_GAP = 6000; // 6 seconds between calls — rate limit protection
       if(msSinceLast < MIN_CALL_GAP && lastCallTimeRef.current > 0){
         await new Promise(r => setTimeout(r, MIN_CALL_GAP - msSinceLast));
       }
@@ -465,6 +465,25 @@ export default function ERSA() {
         body: JSON.stringify({messages: messagesToSend, isSynthesis: isSynthesisCall, language: langRef.current}),
         signal: abortControllerRef.current.signal
       });
+      // Rate limit handling: 429 and 529 both mean too many requests
+      // Auto-wait 15s before surfacing retry — gives the rate limit window time to reset
+      if(res.status === 429 || res.status === 529){
+        setLoading(false);
+        loadingRef.current = false;
+        const isFrNow = fr();
+        const waitMsg = isFrNow
+          ? "Limite de requêtes atteinte. Nouvelle tentative automatique dans 15 secondes — veuillez patienter."
+          : "Rate limit reached. Automatically retrying in 15 seconds — please wait.";
+        setChatItems(prev => [...prev, {type:"ai", text:waitMsg, qKey:null, isGateFail:false, id:Date.now()+Math.random()}]);
+        scrollToBottom(300);
+        await new Promise(r => setTimeout(r, 15000));
+        // Auto-retry after wait — don't require the producer to press anything
+        setLoading(true);
+        loadingRef.current = true;
+        lastCallTimeRef.current = 0; // Reset throttle so retry fires immediately
+        await callAPI();
+        return;
+      }
       if(!res.ok) throw new Error(res.status);
       const data = await res.json();
       const reply = data.content?.[0]?.text || "";
