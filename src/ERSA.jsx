@@ -745,10 +745,13 @@ export default function ERSA() {
         <div style={{background:"rgba(183,98,10,0.15)",border:"1px solid rgba(183,98,10,0.4)",borderLeft:"3px solid #B7620A",borderRadius:8,padding:"16px 20px",textAlign:"left",marginBottom:20}}>
           <div style={{fontSize:10,fontFamily:"monospace",fontWeight:700,color:"#B7620A",letterSpacing:"0.14em",textTransform:"uppercase",marginBottom:8}}>⚠ Soft Launch — April 2026</div>
           <p style={{fontSize:13,color:"rgba(255,255,255,0.8)",lineHeight:1.7,margin:0}}>
-            This tool is in its first weeks of operation. You may occasionally experience a slow response or a connection error during the assessment — particularly at the end when your report is being compiled. If this happens, a retry button will appear. In most cases a single retry is all that is needed.
+            This tool is in its first weeks of operation. You may occasionally experience a slow response or a connection error — particularly at the end when your report is being compiled. If this happens, a retry button will appear. In most cases a single retry resolves it.
           </p>
           <p style={{fontSize:13,color:"rgba(255,255,255,0.8)",lineHeight:1.7,margin:"10px 0 0 0"}}>
-            If you are unable to complete the assessment, please contact us directly at <span style={{color:"#90CAF9",fontFamily:"monospace"}}>info@passageexport.com</span> and we will assist you personally.
+            Occasionally, the AI service that powers this tool (Claude by Anthropic) experiences high global demand and may be temporarily unavailable. This is outside our control. If you experience repeated failures, you can check the current service status at <a href="https://status.anthropic.com" target="_blank" rel="noreferrer" style={{color:"#90CAF9"}}>status.anthropic.com</a>.
+          </p>
+          <p style={{fontSize:13,color:"rgba(255,255,255,0.8)",lineHeight:1.7,margin:"10px 0 0 0"}}>
+            If you are unable to complete the assessment, please contact us at <span style={{color:"#90CAF9",fontFamily:"monospace"}}>info@passageexport.com</span> and we will assist you personally.
           </p>
         </div>
         {/* FR version of notice */}
@@ -758,7 +761,10 @@ export default function ERSA() {
             Cet outil est dans ses premières semaines de fonctionnement. Vous pourrez occasionnellement rencontrer une réponse lente ou une erreur de connexion — notamment à la fin lors de la génération du rapport. Un bouton de nouvelle tentative apparaîtra si nécessaire.
           </p>
           <p style={{fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.7,margin:"10px 0 0 0"}}>
-            En cas de difficulté, contactez-nous directement à <span style={{color:"#90CAF9",fontFamily:"monospace"}}>info@passageexport.com</span>.
+            Parfois, le service d'intelligence artificielle qui alimente cet outil (Claude d'Anthropic) est temporairement surchargé en raison d'une forte demande mondiale. Cela échappe à notre contrôle. En cas d'échecs répétés, vous pouvez vérifier l'état du service sur <a href="https://status.anthropic.com" target="_blank" rel="noreferrer" style={{color:"#90CAF9"}}>status.anthropic.com</a>.
+          </p>
+          <p style={{fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.7,margin:"10px 0 0 0"}}>
+            En cas de difficulté, contactez-nous à <span style={{color:"#90CAF9",fontFamily:"monospace"}}>info@passageexport.com</span>.
           </p>
         </div>
         <p style={{fontSize:11,color:"rgba(255,255,255,0.3)",textAlign:"center",lineHeight:1.6,fontFamily:"monospace",padding:"0 16px",margin:0}}>
@@ -773,10 +779,10 @@ export default function ERSA() {
       <div className="intake-card">
         <div className="eyebrow">{fr()?"Vos coordonnées":"Your details"}</div>
         <h1 style={{fontSize:20,marginBottom:24}}>{fr()?"Avant de commencer":"Before we begin"}</h1>
-        <div className="field"><label>{fr()?"Votre nom":"Your name"}</label><input placeholder={fr()?"Prénom et nom":"First and last name"} value={formVals.name} onChange={e=>setFormVals(p=>({...p,name:e.target.value}))}/></div>
-        <div className="field"><label>{fr()?"Nom de l'entreprise":"Business name"}</label><input placeholder={fr()?"Nom de votre entreprise":"Your business name"} value={formVals.biz} onChange={e=>setFormVals(p=>({...p,biz:e.target.value}))}/></div>
-        <div className="field"><label>{fr()?"Gamme de produits":"Product range"}</label><input placeholder={fr()?"Ex: Dal puris congelés, faratas":"e.g. Frozen dal puris, faratas"} value={formVals.prod} onChange={e=>setFormVals(p=>({...p,prod:e.target.value}))}/></div>
-        <div className="field"><label>{fr()?"Adresse e-mail":"Email address"}</label><input type="email" placeholder={fr()?"Votre adresse e-mail":"Your email address"} value={formVals.email} onChange={e=>setFormVals(p=>({...p,email:e.target.value}))}/></div>
+        <div className="field"><label htmlFor="ersa-name">{fr()?"Votre nom":"Your name"}</label><input id="ersa-name" name="name" placeholder={fr()?"Prénom et nom":"First and last name"} value={formVals.name} onChange={e=>setFormVals(p=>({...p,name:e.target.value}))}/></div>
+        <div className="field"><label htmlFor="ersa-biz">{fr()?"Nom de l'entreprise":"Business name"}</label><input id="ersa-biz" name="businessName" placeholder={fr()?"Nom de votre entreprise":"Your business name"} value={formVals.biz} onChange={e=>setFormVals(p=>({...p,biz:e.target.value}))}/></div>
+        <div className="field"><label htmlFor="ersa-prod">{fr()?"Gamme de produits":"Product range"}</label><input id="ersa-prod" name="productRange" placeholder={fr()?"Ex: Dal puris congelés, faratas":"e.g. Frozen dal puris, faratas"} value={formVals.prod} onChange={e=>setFormVals(p=>({...p,prod:e.target.value}))}/></div>
+        <div className="field"><label htmlFor="ersa-email">{fr()?"Adresse e-mail":"Email address"}</label><input id="ersa-email" name="email" type="email" placeholder={fr()?"Votre adresse e-mail":"Your email address"} value={formVals.email} onChange={e=>setFormVals(p=>({...p,email:e.target.value}))}/></div>
         <div className="field">
           <label>{fr()?"Marchés cibles":"Target markets"}</label>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -1122,7 +1128,10 @@ function CoffeeBreak({lang, onContinue}){
 // ── ReportScreen component ────────────────────────────────────────────────────
 function ReportScreen({report, lang, onRestart, messages}){
   const isFr = lang==="FR";
-  const totalScoreNum = parseInt(report.totalScore)||0;
+  const phaseSum = ["regulatory","product","operations","commercial"]
+    .reduce((s,k)=>s+(parseInt(report.phases?.[k]?.score)||0), 0);
+  const totalScoreNum = parseInt(report.totalScore)||phaseSum||0;
+  if(!report.totalScore && phaseSum>0) report.totalScore = phaseSum;
   const derivedBand = totalScoreNum>=109?"Export-ready":totalScoreNum>=68?"Near-ready":totalScoreNum>=34?"Developing":"Pre-readiness";
   report.band = derivedBand;
   const b = BAND[derivedBand]||BAND["Developing"];
@@ -1141,6 +1150,13 @@ function ReportScreen({report, lang, onRestart, messages}){
     ?["Pré-maturité|0–33","En développement|34–67","Quasi-prêt|68–108","Prêt à l'export|109–135"]
     :["Pre-Readiness|0–33","Developing|34–67","Near-Ready|68–108","Export-Ready|109–135"];
   const bandColors={"Pre-readiness":"#B91C1C","Developing":"#B7620A","Near-ready":"#2E86C1","Export-ready":"#1A5C38"};
+  // Normalize band key — Sonnet may return "Pre-Readiness" vs "Pre-readiness"
+  const normalizeBand=(b)=>{
+    if(!b) return "Developing";
+    const map={"pre-readiness":"Pre-readiness","developing":"Developing","near-ready":"Near-ready","near ready":"Near-ready","export-ready":"Export-ready","export ready":"Export-ready"};
+    return map[b.toLowerCase().trim()]||b;
+  };
+  report.band = normalizeBand(derivedBand);
   const currentBandIdx=bandOrder.indexOf(report.band);
 
   const scaleSegs=bandOrder.map((bk,i)=>{
@@ -1211,7 +1227,16 @@ function ReportScreen({report, lang, onRestart, messages}){
     );
   });
 
-  const qw=report.quickWins||[];
+  const rawQw=report.quickWins||[];
+  const qw = rawQw.length > 0 ? rawQw : (()=>{
+    const allGaps = ["regulatory","product","operations","commercial"]
+      .flatMap(k=>(report.phases?.[k]?.gaps||[]))
+      .filter(g=>g.difficulty==="quickwin"||g.difficulty==="action rapide")
+      .map(g=>g.action||g.title||"")
+      .filter(Boolean)
+      .slice(0,5);
+    return allGaps;
+  })();
   const emailBody = isFr
     ?`Bonjour,\n\nJ'ai complété l'auto-évaluation de préparation à l'export et je souhaite un rappel pour discuter de mon parcours.\n\nEntreprise : ${report.businessName||""}\nContact : ${report.producerName||""}\nRésultat : ${b.l} — ${report.totalScore} / 135\nMarchés cibles : ${(report.targetMarkets||[]).join(", ")}\n\nJe joins à cet e-mail mon rapport ERSA et le relevé complet de l'évaluation.\n\nMerci.`
     :`Hello,\n\nI have completed the Export Readiness Self-Assessment and would welcome a callback to discuss my pathway.\n\nBusiness: ${report.businessName||""}\nContact: ${report.producerName||""}\nResult: ${b.l} — ${report.totalScore} / 135\nTarget markets: ${(report.targetMarkets||[]).join(", ")}\n\nI have attached my ERSA Report and Full Assessment Record to this email.\n\nThank you.`;
@@ -1344,7 +1369,7 @@ function ReportScreen({report, lang, onRestart, messages}){
           <div style={{background:b.bg,borderBottom:`3px solid ${b.c}`,padding:"28px 40px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <div>
               <div style={{fontSize:10,fontFamily:"monospace",fontWeight:700,color:b.c,letterSpacing:"0.18em",textTransform:"uppercase",marginBottom:4}}>{isFr?"NIVEAU DE MATURITÉ EXPORT":"EXPORT READINESS BAND"}</div>
-              <div style={{fontSize:34,fontWeight:900,color:b.c,lineHeight:1,marginBottom:8}}>{b.l}</div>
+              <div style={{fontSize:34,fontWeight:900,color:b.c,lineHeight:1,marginBottom:8}}>{isFr?{"Pre-readiness":"Pré-maturité","Developing":"En développement","Near-ready":"Quasi-prêt","Export-ready":"Prêt à l'export"}[derivedBand]||b.l:b.l}</div>
               <div style={{fontSize:13,color:b.c,opacity:0.8,maxWidth:360,lineHeight:1.5}}>{report.bandRationale||""}</div>
             </div>
             <div style={{display:"flex",alignItems:"baseline",gap:4,flexShrink:0}}>
