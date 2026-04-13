@@ -218,8 +218,10 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 4000,
+        // Haiku for conversational questions (fast, less congested infrastructure, lower 529 rate)
+        // Sonnet only for synthesis (Q43 report generation — full quality needed for JSON output)
+        model: isSynthesis ? 'claude-sonnet-4-5' : 'claude-haiku-4-5-20251001',
+        max_tokens: isSynthesis ? 4000 : 1000,
         system: isSynthesis ? (SYS_SYNTHESIS + (language === 'FR' ? '\n\nIMPORTANT: Generate ALL text in the JSON — summaries, gap titles, action text, passage help text, bandRationale, pathwayRationale, quickWins — in French. The producer selected French as their language.' : '')) : SYS,
         messages
       })
