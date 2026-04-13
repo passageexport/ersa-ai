@@ -203,7 +203,7 @@ TRACEABILITY (Q05, Q06): Desirable, not compulsory.
 
 Each gap object MUST use exactly: "id", "title", "type" (compulsory/desirable), "difficulty" (quickwin/medium/complex), "action" (1-2 sentences), "passage" (1 sentence, Passage services only, no EDB or government body references).
 
-Output ONLY this JSON. No text before or after. No markdown.
+Output ONLY the following. Do NOT wrap in markdown code fences. Do NOT use ```json or ```. Do NOT add any text before or after. Start your entire response with the exact text ERSA_REPORT_JSON: and then immediately the JSON object.
 
 ERSA_REPORT_JSON:
 {"producerName":"","businessName":"","productRange":"","targetMarkets":[],"language":"EN","eligibilityGate":"passed","animalDerived":false,"phases":{"regulatory":{"score":0,"max":18,"summary":"","gaps":[]},"product":{"score":0,"max":51,"summary":"","gaps":[]},"operations":{"score":0,"max":33,"summary":"","gaps":[]},"commercial":{"score":0,"max":27,"summary":"","gaps":[]}},"quickWins":[],"totalScore":0,"band":"Pre-readiness","bandRationale":"","recommendedPathway":"Verification","pathwayRationale":""}`;
