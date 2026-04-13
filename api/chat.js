@@ -203,7 +203,16 @@ DESIRABLE gaps: Q03, Q04, Q05, Q06, Q10, Q11, Q14, Q23, Q24, Q25, Q26, Q27, Q30,
 Q07 is routing only — set animalDerived:true if animal-derived, never list as a gap.
 TRACEABILITY (Q05, Q06): Desirable, not compulsory.
 
-Each gap object MUST use exactly: "id", "title", "type" (compulsory/desirable), "difficulty" (quickwin/medium/complex), "action" (1-2 sentences), "passage" (1 sentence, Passage services only, no EDB or government body references).
+Each gap object MUST use exactly: "id", "title", "type" (compulsory/desirable), "difficulty" (quickwin/medium/complex), "action" (ONE sentence only, max 20 words), "passage" (ONE sentence only, max 15 words, Passage services only, no EDB or government body references).
+
+STRICT LENGTH LIMITS — you must stay within these:
+- Each phase summary: max 30 words
+- bandRationale: max 30 words  
+- pathwayRationale: max 30 words
+- quickWins: max 5 items, each max 15 words
+- Gap action: max 20 words
+- Gap passage: max 15 words
+These limits are mandatory. The total JSON must not exceed 3000 tokens.
 
 Output ONLY the following. Do NOT wrap in markdown code fences. Do NOT use code blocks of any kind. Do NOT add any text before or after. Start your entire response with the exact text ERSA_REPORT_JSON: and then immediately the JSON object.
 
