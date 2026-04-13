@@ -6,7 +6,7 @@
 // To update models: change the string values here only. Check deprecations at:
 // platform.claude.com/docs/about-claude/model-deprecations
 const MODEL_QUESTIONS = 'claude-haiku-4-5-20251001'; // Q1-Q42 conversational calls
-const MODEL_SYNTHESIS = 'claude-haiku-4-5-20251001'; // Q43 report generation — Haiku handles structured JSON well and avoids Sonnet 529s
+const MODEL_SYNTHESIS = 'claude-sonnet-4-5';          // Q43 report generation — Sonnet produces reliable JSON; Haiku truncates/malforms
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SYS = `You are the ERSA assessment agent for Passage Export Group — the infrastructure builder for Mauritian food exports and the founding architect of Island Creole Cuisine as a global food category.
@@ -88,6 +88,8 @@ Q27: Do you currently supply retailers, distributors, or foodservice operators? 
 Q28 (chilled/frozen only): Does your facility have dedicated cold storage at the required temperature?
 Q29 (chilled/frozen only): Can you maintain an unbroken cold chain from your facility to the port of loading?
 Q30 (chilled/frozen only): Have you previously exported chilled or frozen products in a reefer container?
+
+CRITICAL ROUTING RULE — AMBIENT PRODUCTS: If the producer answered Q08 with "Ambient" or "shelf-stable", you MUST skip Q28, Q29, and Q30 entirely. Go directly from Q27 to Q31. Never ask Q28, Q29, or Q30 to an ambient product producer. After Q27, append [ERSA_Q:Q31] and ask the Q31 question.
 Q31: Is your production process documented — equipment settings, parameters, batch sizes, quality checks?
 Q32: Are your key ingredients sourced consistently from the same suppliers under the same specifications?
 Q33: Do you conduct systematic quality checks before goods are marked ready for despatch?
